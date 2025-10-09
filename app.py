@@ -729,7 +729,7 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendario Motorsport - Alkamel Management</title>
+    <title>Events Management AKS - Alkamel Management</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -779,7 +779,7 @@ DASHBOARD_HTML = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏁 Calendario Motorsport</h1>
+            <h1>🏁 Events Management</h1>
             <p>Alkamel Management - Sistema Enterprise</p>
         </div>
         
