@@ -427,8 +427,8 @@ class MotorsportCalendarEnterprise:
     def _create_excel_file(self, drive_id: str, processed_data: Dict, headers: Dict) -> bool:
         """Crear archivo Excel con todas las pestañas"""
         try:
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M')
-            filename = f"Calendario_Motorsport_Alkamel_{timestamp}.xlsx"
+            
+            filename = "Calendario_Motorsport_Alkamel.xlsx"
             
             buffer = BytesIO()
             
