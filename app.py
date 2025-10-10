@@ -1,10 +1,10 @@
 """
 Calendario Motorsport Enterprise - Alkamel Management
-Optimizado para Railway.app deployment
+Dashboard Visual + Excel en SharePoint
 
-Versión: 1.0 Railway Production
+Versión: 2.0 Dashboard Visual
 Autor: Claude AI para Alkamel Management
-Fecha: 28/01/2025
+Fecha: 10/10/2025
 """
 
 import os
@@ -23,6 +23,8 @@ from typing import Dict, List, Optional
 import sqlite3
 from io import BytesIO
 import warnings
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 warnings.filterwarnings('ignore')
 
@@ -68,19 +70,19 @@ class MotorsportCalendarEnterprise:
         
         # Colores por SET
         self.color_mapping = {
-            'SET 1': '#FF6B6B',      # FIA WEC
-            'SET 2': '#4ECDC4',      # CIRCUITCAT
-            'SET 3': '#45B7D1',      # FERRARI
-            'MICROSET': '#96CEB4',   # Verde claro
-            'SET RW': '#FFEAA7',     # F4-E3
-            'EVENTS 3': '#DDA0DD',   # Ferrari NA
-            'EVENTS 4': '#98D8C8',   # Ferrari UK
-            'EVENTS 5': '#F7DC6F',   # Amarillo claro
-            'EVENTS 6': '#BB8FCE',   # Púrpura claro
-            'SCER': '#F8C471',       # Naranja claro
-            'CERVH': '#85C1E9',      # Azul claro
-            'SET6': '#F1C40F',       # E1 Series
-            'SET 5': '#27AE60',      # ELMS
+            'SET 1': '#FF6B6B',
+            'SET 2': '#4ECDC4',
+            'SET 3': '#45B7D1',
+            'MICROSET': '#96CEB4',
+            'SET RW': '#FFEAA7',
+            'EVENTS 3': '#DDA0DD',
+            'EVENTS 4': '#98D8C8',
+            'EVENTS 5': '#F7DC6F',
+            'EVENTS 6': '#BB8FCE',
+            'SCER': '#F8C471',
+            'CERVH': '#85C1E9',
+            'SET6': '#F1C40F',
+            'SET 5': '#27AE60',
             'default': '#BDC3C7'
         }
         
@@ -138,13 +140,11 @@ class MotorsportCalendarEnterprise:
         """Obtener datos de Airtable con cache"""
         cache_key = f"airtable_{table_name}"
         
-        # Verificar cache
         if cache_key in self.cache:
             if datetime.now() < self.cache_expiry.get(cache_key, datetime.min):
                 logger.info(f"📦 Usando cache para {table_name}")
                 return self.cache[cache_key]
         
-        # Mapeo de tablas
         table_ids = {
             'EVENTS': 'tblVb1BuNKkUoS96b',
             'EVENTS RESERVATIONS': 'tbllmzrlZvphVWaP7',
@@ -181,7 +181,6 @@ class MotorsportCalendarEnterprise:
                     break
             
             if all_records:
-                # Guardar en cache por 5 minutos
                 self.cache[cache_key] = all_records
                 self.cache_expiry[cache_key] = datetime.now() + timedelta(minutes=5)
                 logger.info(f"📊 Obtenidos {len(all_records)} registros de {table_name}")
@@ -194,9 +193,8 @@ class MotorsportCalendarEnterprise:
     
     def process_motorsport_data(self) -> Dict:
         """Procesar datos completos de motorsport"""
-        logger.info("🏁 Procesando datos de motorsport...")
+        logger.info("🔄 Procesando datos de motorsport...")
         
-        # Obtener datos
         events_data = self.get_airtable_data('EVENTS')
         reservations_data = self.get_airtable_data('EVENTS RESERVATIONS')
         
@@ -204,7 +202,6 @@ class MotorsportCalendarEnterprise:
             logger.error("❌ No se encontraron eventos")
             return {}
         
-        # Rango de fechas (próximos 12 meses)
         start_date = datetime.now().date()
         end_date = start_date + timedelta(days=365)
         
@@ -222,11 +219,9 @@ class MotorsportCalendarEnterprise:
             'critical_dates': []
         }
         
-        # Procesar eventos
         for event_record in events_data:
             fields = event_record.get('fields', {})
             
-            # Verificar fechas
             if 'From' not in fields or 'To' not in fields:
                 continue
             
@@ -236,20 +231,16 @@ class MotorsportCalendarEnterprise:
             except:
                 continue
             
-            # Filtrar rango
             if event_start > end_date or event_end < start_date:
                 continue
             
-            # Determinar SET
             championship = fields.get('CAMPEONATO-CIRCUITO-ENTIDAD (from CHAMPIONSHIP)', [''])[0] if fields.get('CAMPEONATO-CIRCUITO-ENTIDAD (from CHAMPIONSHIP)') else ''
             set_name = self._determine_set(championship)
             
-            # Estados
             status = fields.get('STATUS', '')
             confirmed = fields.get('CONFIRMED', False)
             coordinator = fields.get('Name (from Event Coordinator)', [''])[0] if fields.get('Name (from Event Coordinator)') else 'Sin coordinador'
             
-            # Buscar reservaciones
             event_reservations = []
             for res_record in reservations_data:
                 res_fields = res_record.get('fields', {})
@@ -275,7 +266,6 @@ class MotorsportCalendarEnterprise:
                         except:
                             continue
             
-            # Crear evento
             event_entry = {
                 'event_id': event_record['id'],
                 'event_name': fields.get('EVENT NAME', 'Sin nombre'),
@@ -298,7 +288,6 @@ class MotorsportCalendarEnterprise:
             
             processed_events.append(event_entry)
             
-            # Actualizar estadísticas
             stats['total_events'] += 1
             stats['total_reservations'] += len(event_reservations)
             
@@ -312,17 +301,12 @@ class MotorsportCalendarEnterprise:
                 stats['unassigned_events'] += 1
                 unassigned_events.append(event_entry)
             
-            # Por SET
             stats['events_by_set'][set_name] = stats['events_by_set'].get(set_name, 0) + 1
-            
-            # Por coordinador
             stats['events_by_coordinator'][coordinator] = stats['events_by_coordinator'].get(coordinator, 0) + 1
             
-            # Fechas críticas (próximos 7 días sin asignar)
             if (event_start - start_date).days <= 7 and len(event_reservations) == 0 and confirmed:
                 stats['critical_dates'].append(event_entry)
         
-        # Ordenar
         processed_events.sort(key=lambda x: x['from_date'])
         
         result = {
@@ -353,7 +337,7 @@ class MotorsportCalendarEnterprise:
         return 'default'
     
     def create_sharepoint_excel(self, processed_data: Dict) -> bool:
-        """Crear Excel en SharePoint"""
+        """Crear Excel en SharePoint con formato visual"""
         token = self.get_graph_token()
         if not token:
             logger.error("❌ No se pudo obtener token de Microsoft Graph")
@@ -367,7 +351,6 @@ class MotorsportCalendarEnterprise:
         try:
             logger.info("📊 Creando Excel en SharePoint...")
             
-            # Obtener IDs
             site_id = self._get_site_id(headers)
             if not site_id:
                 return False
@@ -376,7 +359,6 @@ class MotorsportCalendarEnterprise:
             if not drive_id:
                 return False
             
-            # Crear Excel
             success = self._create_excel_file(drive_id, processed_data, headers)
             
             if success:
@@ -425,9 +407,8 @@ class MotorsportCalendarEnterprise:
             return None
     
     def _create_excel_file(self, drive_id: str, processed_data: Dict, headers: Dict) -> bool:
-        """Crear archivo Excel con todas las pestañas"""
+        """Crear archivo Excel con formato visual mejorado"""
         try:
-            
             folder_path = "Documentos compartidos/General/Prueba Calendario"
             filename = f"{folder_path}/Calendario_Motorsport_Alkamel.xlsx"
             
@@ -460,8 +441,16 @@ class MotorsportCalendarEnterprise:
                 sets_df = self._create_sets_sheet(processed_data['events'])
                 sets_df.to_excel(writer, sheet_name='SETs', index=False)
             
+            # Aplicar formato visual
             buffer.seek(0)
-            file_content = buffer.read()
+            workbook = load_workbook(buffer)
+            self._apply_excel_formatting(workbook, processed_data)
+            
+            # Guardar con formato
+            formatted_buffer = BytesIO()
+            workbook.save(formatted_buffer)
+            formatted_buffer.seek(0)
+            file_content = formatted_buffer.read()
             
             # Subir a SharePoint
             url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{filename}:/content"
@@ -486,6 +475,79 @@ class MotorsportCalendarEnterprise:
             logger.error(f"❌ Excepción creando Excel: {str(e)}")
             return False
     
+    def _apply_excel_formatting(self, workbook, processed_data: Dict):
+        """Aplicar formato visual a todas las hojas"""
+        
+        # Estilos
+        header_fill = PatternFill(start_color="2C3E50", end_color="2C3E50", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=11)
+        
+        warning_fill = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
+        critical_fill = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")
+        success_fill = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
+        
+        border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
+        
+        # Formatear cada hoja
+        for sheet_name in workbook.sheetnames:
+            ws = workbook[sheet_name]
+            
+            # Headers
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border
+            
+            # Ajustar anchos
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
+            
+            # Colores específicos por hoja
+            if sheet_name == 'Sin Asignar':
+                for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                    for cell in row:
+                        cell.fill = warning_fill
+                        cell.border = border
+            
+            elif sheet_name == 'Criticos':
+                for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                    for cell in row:
+                        cell.fill = critical_fill
+                        cell.border = border
+            
+            elif sheet_name == 'Calendario':
+                # Colorear por SET
+                for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
+                    set_value = ws[f'C{row_idx}'].value  # Columna SET
+                    if set_value and set_value in self.color_mapping:
+                        color = self.color_mapping[set_value].replace('#', '')
+                        set_fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+                        ws[f'C{row_idx}'].fill = set_fill
+                    
+                    for cell in row:
+                        cell.border = border
+            
+            else:
+                # Resto de hojas con borders
+                for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                    for cell in row:
+                        cell.border = border
+    
     def _create_calendar_sheet(self, events: List[Dict]) -> pd.DataFrame:
         """Crear hoja de calendario principal"""
         rows = []
@@ -503,7 +565,7 @@ class MotorsportCalendarEnterprise:
                         'Empleado': reservation['employee'],
                         'Empleado Desde': reservation['from_date'].strftime('%d/%m/%Y'),
                         'Empleado Hasta': reservation['to_date'].strftime('%d/%m/%Y'),
-                        'Remoto': 'Si' if reservation['remote'] else 'No',
+                        'Remoto': 'Sí' if reservation['remote'] else 'No',
                         'Actualizado': datetime.now().strftime('%d/%m/%Y %H:%M')
                     })
             else:
@@ -514,7 +576,7 @@ class MotorsportCalendarEnterprise:
                     'Coordinador': event['coordinator'],
                     'Fecha Inicio': event['from_date'].strftime('%d/%m/%Y'),
                     'Fecha Fin': event['to_date'].strftime('%d/%m/%Y'),
-                    'Empleado': 'SIN ASIGNAR',
+                    'Empleado': '⚠️ SIN ASIGNAR',
                     'Empleado Desde': 'N/A',
                     'Empleado Hasta': 'N/A',
                     'Remoto': 'N/A',
@@ -529,22 +591,22 @@ class MotorsportCalendarEnterprise:
         
         for event in unassigned_events:
             days_until = (event['from_date'] - datetime.now().date()).days
-            urgency = 'INMEDIATO' if days_until <= 3 else 'URGENTE' if days_until <= 7 else 'PENDIENTE'
+            urgency = '🔥 INMEDIATO' if days_until <= 3 else '⚡ URGENTE' if days_until <= 7 else '⚠️ PENDIENTE'
             
             rows.append({
                 'Urgencia': urgency,
-                'Dias Restantes': days_until,
+                'Días Restantes': days_until,
                 'Evento': event['event_name'],
                 'Ciudad': event['city'],
                 'SET': event['set_name'],
                 'Coordinador': event['coordinator'],
                 'Fecha Inicio': event['from_date'].strftime('%d/%m/%Y'),
-                'Accion': 'Asignar empleado/guardia'
+                'Acción': 'Asignar empleado/guardia'
             })
         
         df = pd.DataFrame(rows)
         if not df.empty:
-            urgency_order = {'INMEDIATO': 0, 'URGENTE': 1, 'PENDIENTE': 2}
+            urgency_order = {'🔥 INMEDIATO': 0, '⚡ URGENTE': 1, '⚠️ PENDIENTE': 2}
             df['urgency_sort'] = df['Urgencia'].map(urgency_order)
             df = df.sort_values('urgency_sort').drop('urgency_sort', axis=1)
         
@@ -553,11 +615,11 @@ class MotorsportCalendarEnterprise:
     def _create_summary_sheet(self, stats: Dict) -> pd.DataFrame:
         """Crear hoja de resumen"""
         rows = [
-            {'Metrica': 'Total eventos', 'Valor': stats['total_events']},
-            {'Metrica': 'Eventos confirmados', 'Valor': stats['confirmed_events']},
-            {'Metrica': 'Sin asignar', 'Valor': stats['unassigned_events']},
-            {'Metrica': 'Total asignaciones', 'Valor': stats['total_reservations']},
-            {'Metrica': 'Trabajo remoto', 'Valor': stats['remote_assignments']},
+            {'📊 Métrica': 'Total eventos', 'Valor': stats['total_events'], 'Estado': '📈'},
+            {'📊 Métrica': 'Eventos confirmados', 'Valor': stats['confirmed_events'], 'Estado': '✅'},
+            {'📊 Métrica': '⚠️ Sin asignar', 'Valor': stats['unassigned_events'], 'Estado': '🚨' if stats['unassigned_events'] > 0 else '✅'},
+            {'📊 Métrica': 'Total asignaciones', 'Valor': stats['total_reservations'], 'Estado': '👥'},
+            {'📊 Métrica': 'Trabajo remoto', 'Valor': stats['remote_assignments'], 'Estado': '🏠'},
         ]
         
         return pd.DataFrame(rows)
@@ -570,8 +632,8 @@ class MotorsportCalendarEnterprise:
             days_left = (event['from_date'] - datetime.now().date()).days
             
             rows.append({
-                'Nivel': 'INMEDIATO' if days_left <= 2 else 'URGENTE',
-                'Dias': days_left,
+                '🚨 Nivel': '🔥 INMEDIATO' if days_left <= 2 else '⚡ URGENTE',
+                '⏰ Días': days_left,
                 'Evento': event['event_name'],
                 'Ciudad': event['city'],
                 'SET': event['set_name'],
@@ -605,14 +667,16 @@ class MotorsportCalendarEnterprise:
         rows = []
         for coord, stats in coordinator_stats.items():
             eficiencia = round((stats['confirmados'] - stats['sin_asignar']) / max(stats['confirmados'], 1) * 100, 1)
+            estado = '✅' if eficiencia >= 90 else '⚠️' if eficiencia >= 70 else '🚨'
             
             rows.append({
-                'Coordinador': coord,
+                '👤 Coordinador': coord,
                 'Total Eventos': stats['total'],
-                'Confirmados': stats['confirmados'],
-                'Sin Asignar': stats['sin_asignar'],
-                'Total Empleados': stats['empleados'],
-                'Eficiencia %': eficiencia
+                '✅ Confirmados': stats['confirmados'],
+                '⚠️ Sin Asignar': stats['sin_asignar'],
+                '👥 Empleados': stats['empleados'],
+                '📈 Eficiencia %': eficiencia,
+                '📋 Estado': estado
             })
         
         return pd.DataFrame(rows)
@@ -641,14 +705,16 @@ class MotorsportCalendarEnterprise:
         rows = []
         for set_name, stats in sets_stats.items():
             cobertura = round((stats['confirmados'] - stats['sin_asignar']) / max(stats['confirmados'], 1) * 100, 1)
+            estado = '✅' if cobertura >= 90 else '⚠️' if cobertura >= 70 else '🚨'
             
             rows.append({
-                'SET': set_name,
+                '🏆 SET': set_name,
                 'Total Eventos': stats['eventos'],
-                'Confirmados': stats['confirmados'],
-                'Sin Personal': stats['sin_asignar'],
-                'Total Empleados': stats['empleados'],
-                'Cobertura %': cobertura
+                '✅ Confirmados': stats['confirmados'],
+                '⚠️ Sin Personal': stats['sin_asignar'],
+                '👥 Empleados': stats['empleados'],
+                '📈 Cobertura %': cobertura,
+                '📋 Estado': estado
             })
         
         return pd.DataFrame(rows)
@@ -687,6 +753,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'motorsport-alkamel-secret-2025')
 calendar_instance = None
 last_update_status = {'success': False, 'timestamp': None, 'message': ''}
 update_stats = {'total_updates': 0, 'successful_updates': 0}
+cached_dashboard_data = None
 
 # Base de datos SQLite
 def init_database():
@@ -723,156 +790,368 @@ def log_update(status: str, message: str, events_processed: int = 0, unassigned_
 
 init_database()
 
-# Template HTML Dashboard
-DASHBOARD_HTML = """
+# Template HTML Dashboard Visual
+DASHBOARD_VISUAL_HTML = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events Management AKS - Alkamel Management</title>
+    <title>Dashboard Motorsport - Alkamel Management</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh; padding: 20px;
+            padding: 20px;
+            min-height: 100vh;
         }
-        .container {
-            max-width: 1200px; margin: 0 auto; background: white;
-            border-radius: 15px; box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-        }
+        
         .header {
             background: linear-gradient(45deg, #2c3e50, #34495e);
-            color: white; padding: 30px; text-align: center; border-radius: 15px 15px 0 0;
+            color: white;
+            padding: 25px;
+            text-align: center;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        
         .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .main-content { padding: 40px; }
-        .status-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px; margin-bottom: 40px;
+        .header .subtitle { opacity: 0.9; font-size: 1.1em; }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
-        .status-card {
-            background: #f8f9fa; border-radius: 10px; padding: 25px;
-            border-left: 4px solid #3498db;
+        
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
         }
-        .status-card.success { border-left-color: #27ae60; }
-        .status-card.warning { border-left-color: #f39c12; }
-        .status-card h3 { color: #2c3e50; margin-bottom: 15px; }
-        .status-value { font-size: 2em; font-weight: bold; color: #3498db; }
-        .status-card.success .status-value { color: #27ae60; }
-        .action-buttons {
-            display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 40px 0;
+        
+        .metric-card:hover { transform: translateY(-5px); }
+        
+        .metric-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
         }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        
+        .metric-card.critical .metric-value { color: #e74c3c; animation: pulse 2s infinite; }
+        .metric-card.warning .metric-value { color: #f39c12; }
+        .metric-card.success .metric-value { color: #27ae60; }
+        .metric-card.info .metric-value { color: #3498db; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        tr:hover { background: #f8f9fa; }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .badge-critical {
+            background: #ffebee;
+            color: #c62828;
+            animation: blink 1.5s infinite;
+        }
+        
+        .badge-urgent {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .badge-pending {
+            background: #fffde7;
+            color: #f57f17;
+        }
+        
+        .badge-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .color-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            vertical-align: middle;
+        }
+        
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
         .btn {
             background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white; padding: 15px 30px; border: none; border-radius: 8px;
-            cursor: pointer; font-size: 16px; text-decoration: none;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s ease;
         }
+        
+        .btn:hover { transform: scale(1.05); }
         .btn-success { background: linear-gradient(45deg, #27ae60, #229954); }
         .btn-warning { background: linear-gradient(45deg, #f39c12, #e67e22); }
-        .alert { padding: 15px; border-radius: 8px; margin: 20px 0; display: none; }
-        .alert-success { background: #d4edda; color: #155724; }
-        .alert-error { background: #f8d7da; color: #721c24; }
-        .alert-warning { background: #fff3cd; color: #856404; }
+        
+        .last-update {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.8em; }
+            table { font-size: 0.85em; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏁 Events Management</h1>
-            <p>Alkamel Management - Sistema Enterprise</p>
+    <div class="header">
+        <h1>🏁 Dashboard Motorsport</h1>
+        <p class="subtitle">Alkamel Management - Sistema de Gestión de Eventos</p>
+    </div>
+    
+    <div class="metrics-grid">
+        <div class="metric-card info">
+            <div class="metric-label">📊 Total Eventos</div>
+            <div class="metric-value">{{ stats.total_events }}</div>
         </div>
         
-        <div class="main-content">
-            <div class="status-grid">
-                <div class="status-card {{ 'success' if configured else 'warning' }}">
-                    <h3>Sistema</h3>
-                    <div class="status-value">{{ '✅' if configured else '⚙️' }}</div>
-                    <p>{{ 'Configurado' if configured else 'Sin configurar' }}</p>
-                </div>
-                
-                <div class="status-card {{ 'success' if last_success else '' }}">
-                    <h3>Última Actualización</h3>
-                    <div class="status-value">{{ '✅' if last_success else '❌' }}</div>
-                    <p>{{ last_timestamp or 'Nunca' }}</p>
-                </div>
-                
-                <div class="status-card">
-                    <h3>Estadísticas</h3>
-                    <div class="status-value">{{ successful }}/{{ total }}</div>
-                    <p>Actualizaciones exitosas</p>
-                </div>
-            </div>
-            
-            <div class="action-buttons">
-                <a href="/config" class="btn">⚙️ Configurar</a>
-                <button onclick="updateCalendar()" class="btn btn-success">🔄 Actualizar</button>
-                <button onclick="checkStatus()" class="btn btn-warning">📊 Estado</button>
-            </div>
-            
-            <div id="status-message" class="alert"></div>
-            
-            {% if not configured %}
-            <div class="alert alert-warning" style="display:block;">
-                ⚠️ <strong>Sistema no configurado.</strong> Haz clic en Configurar para empezar.
-            </div>
-            {% endif %}
+        <div class="metric-card success">
+            <div class="metric-label">✅ Confirmados</div>
+            <div class="metric-value">{{ stats.confirmed_events }}</div>
+        </div>
+        
+        <div class="metric-card {{ 'critical' if stats.unassigned_events > 0 else 'success' }}">
+            <div class="metric-label">⚠️ Sin Asignar</div>
+            <div class="metric-value">{{ stats.unassigned_events }}</div>
+        </div>
+        
+        <div class="metric-card warning">
+            <div class="metric-label">👥 Asignaciones</div>
+            <div class="metric-value">{{ stats.total_reservations }}</div>
         </div>
     </div>
     
-    <script>
-        function showMessage(msg, type) {
-            const div = document.getElementById('status-message');
-            div.className = 'alert alert-' + type;
-            div.innerHTML = msg;
-            div.style.display = 'block';
-            if (type === 'success') setTimeout(() => div.style.display = 'none', 5000);
-        }
-        
-        function updateCalendar() {
-            showMessage('🔄 Actualizando...', 'warning');
-            fetch('/update', {method: 'POST'})
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showMessage('✅ ' + data.message, 'success');
-                        setTimeout(() => location.reload(), 2000);
-                    } else {
-                        showMessage('❌ ' + data.error, 'error');
-                    }
-                });
-        }
-        
-        function checkStatus() {
-            fetch('/status')
-                .then(r => r.json())
-                .then(data => {
-                    let html = '<h3>📊 Estado</h3>';
-                    if (data.configured) {
-                        html += '<p>✅ Sistema operativo</p>';
-                        html += '<p>Última actualización: ' + data.last_update + '</p>';
-                        html += '<p>Actualizaciones: ' + data.successful_updates + '/' + data.total_updates + '</p>';
-                    } else {
-                        html += '<p>⚠️ No configurado</p>';
-                    }
-                    showMessage(html, 'success');
-                });
-        }
-    </script>
+    {% if unassigned_events %}
+    <div class="section">
+        <h2>🚨 Eventos Sin Asignar - ATENCIÓN INMEDIATA</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Urgencia</th>
+                    <th>Días</th>
+                    <th>Evento</th>
+                    <th>Ciudad</th>
+                    <th>SET</th>
+                    <th>Coordinador</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in unassigned_events %}
+                {% set days = (event.from_date_obj - now_date).days %}
+                <tr>
+                    <td>
+                        {% if days <= 3 %}
+                        <span class="status-badge badge-critical">🔥 INMEDIATO</span>
+                        {% elif days <= 7 %}
+                        <span class="status-badge badge-urgent">⚡ URGENTE</span>
+                        {% else %}
+                        <span class="status-badge badge-pending">⚠️ PENDIENTE</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ days }}</strong></td>
+                    <td><strong>{{ event.event_name }}</strong></td>
+                    <td>{{ event.city }}</td>
+                    <td>
+                        <span class="color-dot" style="background: {{ event.color }};"></span>
+                        {{ event.set_name }}
+                    </td>
+                    <td>{{ event.coordinator }}</td>
+                    <td>{{ event.from_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    <div class="section">
+        <h2>📅 Próximos Eventos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Evento</th>
+                    <th>Ciudad</th>
+                    <th>SET</th>
+                    <th>Coordinador</th>
+                    <th>Fecha</th>
+                    <th>Personal</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in recent_events[:10] %}
+                <tr>
+                    <td><strong>{{ event.event_name }}</strong></td>
+                    <td>{{ event.city }}</td>
+                    <td>
+                        <span class="color-dot" style="background: {{ event.color }};"></span>
+                        {{ event.set_name }}
+                    </td>
+                    <td>{{ event.coordinator }}</td>
+                    <td>{{ event.from_date }}</td>
+                    <td>{{ event.employees_count }}</td>
+                    <td>
+                        {% if event.needs_attention %}
+                        <span class="status-badge badge-critical">⚠️ Sin Personal</span>
+                        {% else %}
+                        <span class="status-badge badge-success">✅ OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="action-bar">
+        <div>
+            <a href="/update" class="btn btn-success" onclick="return confirm('¿Actualizar datos desde Airtable y crear Excel en SharePoint?')">🔄 Actualizar Sistema</a>
+            <a href="#" class="btn btn-warning" onclick="window.location.reload()">🔃 Refrescar Dashboard</a>
+        </div>
+        <div>
+            <a href="/excel-link" class="btn" target="_blank">📊 Ver Excel en SharePoint</a>
+        </div>
+    </div>
+    
+    <div class="last-update">
+        <p>🕐 Última actualización: {{ last_updated }}</p>
+        <p>🔄 Actualización automática cada 15 minutos</p>
+    </div>
 </body>
 </html>
 """
 
 @app.route('/')
-def dashboard():
-    """Dashboard"""
-    return render_template_string(DASHBOARD_HTML,
-        configured=calendar_instance is not None,
-        last_success=last_update_status.get('success', False),
-        last_timestamp=last_update_status.get('timestamp', ''),
-        successful=update_stats['successful_updates'],
-        total=update_stats['total_updates']
+def dashboard_visual():
+    """Dashboard visual principal"""
+    global calendar_instance, cached_dashboard_data
+    
+    if not calendar_instance:
+        return """
+        <html>
+        <head><meta charset="UTF-8"><title>Configuración Requerida</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+            <h1>⚙️ Sistema no configurado</h1>
+            <p>Por favor, configura el sistema primero.</p>
+            <a href="/config" style="background: #3498db; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 20px;">Configurar Sistema</a>
+        </body>
+        </html>
+        """
+    
+    # Obtener datos actualizados
+    if not cached_dashboard_data:
+        cached_dashboard_data = calendar_instance.process_motorsport_data()
+    
+    data = cached_dashboard_data
+    
+    if not data:
+        return "<h1>Error obteniendo datos</h1>"
+    
+    # Preparar datos para template
+    return render_template_string(DASHBOARD_VISUAL_HTML,
+        stats=data['stats'],
+        unassigned_events=[{
+            **event,
+            'from_date': event['from_date'].strftime('%d/%m/%Y'),
+            'from_date_obj': event['from_date']
+        } for event in data['unassigned_events']],
+        recent_events=[{
+            **event,
+            'from_date': event['from_date'].strftime('%d/%m/%Y')
+        } for event in data['events'][:20]],
+        last_updated=data['last_updated'],
+        now_date=datetime.now().date()
     )
 
 @app.route('/config', methods=['GET', 'POST'])
@@ -899,7 +1178,6 @@ def config():
             global calendar_instance
             calendar_instance = MotorsportCalendarEnterprise(config_data)
             
-            # Probar
             test_token = calendar_instance.get_graph_token()
             if not test_token:
                 return jsonify({'error': 'Error con Microsoft Graph'}), 400
@@ -916,7 +1194,6 @@ def config():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
-    # Formulario
     return """
 <!DOCTYPE html>
 <html lang="es">
@@ -999,13 +1276,13 @@ def config():
 </html>
     """
 
-@app.route('/update', methods=['POST'])
+@app.route('/update')
 def manual_update():
     """Actualización manual"""
-    global calendar_instance, last_update_status, update_stats
+    global calendar_instance, last_update_status, update_stats, cached_dashboard_data
     
     if not calendar_instance:
-        return jsonify({'error': 'No configurado'}), 400
+        return "Sistema no configurado", 400
     
     try:
         success = calendar_instance.run_full_update()
@@ -1019,42 +1296,52 @@ def manual_update():
                 'message': 'OK'
             }
             
-            processed_data = calendar_instance.process_motorsport_data()
-            stats = processed_data.get('stats', {})
+            # Actualizar cache
+            cached_dashboard_data = calendar_instance.process_motorsport_data()
             
+            stats = cached_dashboard_data.get('stats', {})
             log_update('SUCCESS', 'Manual OK', stats.get('total_events', 0), stats.get('unassigned_events', 0))
             
-            return jsonify({
-                'success': True,
-                'message': f'{stats.get("total_events", 0)} eventos, {stats.get("unassigned_events", 0)} sin asignar'
-            })
+            return f"""
+            <html>
+            <head><meta charset="UTF-8"><meta http-equiv="refresh" content="2;url=/"></head>
+            <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                <h1>✅ Actualización Exitosa</h1>
+                <p>{stats.get('total_events', 0)} eventos procesados</p>
+                <p>{stats.get('unassigned_events', 0)} sin asignar</p>
+                <p>Redirigiendo al dashboard...</p>
+            </body>
+            </html>
+            """
         else:
-            last_update_status = {'success': False, 'timestamp': datetime.now().strftime('%d/%m/%Y %H:%M')}
-            log_update('ERROR', 'Error manual')
-            return jsonify({'error': 'Error actualizando'}), 500
+            return "<h1>Error en actualización</h1>", 500
             
     except Exception as e:
         log_update('ERROR', str(e))
-        return jsonify({'error': str(e)}), 500
+        return f"<h1>Error: {str(e)}</h1>", 500
 
-@app.route('/status')
-def status():
-    """Estado"""
-    return jsonify({
-        'configured': calendar_instance is not None,
-        'last_update': last_update_status.get('timestamp', 'Nunca'),
-        'last_success': last_update_status.get('success', False),
-        'auto_update_interval': calendar_instance.auto_update_interval if calendar_instance else 0,
-        'total_updates': update_stats['total_updates'],
-        'successful_updates': update_stats['successful_updates']
-    })
+@app.route('/api/data')
+def api_data():
+    """API para obtener datos JSON"""
+    global cached_dashboard_data
+    
+    if not cached_dashboard_data:
+        return jsonify({'error': 'No hay datos disponibles'}), 404
+    
+    return jsonify(cached_dashboard_data)
+
+@app.route('/excel-link')
+def excel_link():
+    """Redireccionar al Excel en SharePoint"""
+    # Aquí deberías retornar el link real del Excel en SharePoint
+    return "<html><body><h1>Link al Excel próximamente</h1></body></html>"
 
 # Scheduler
 scheduler_running = False
 
 def auto_update():
     """Auto-actualización"""
-    global calendar_instance, last_update_status, update_stats
+    global calendar_instance, last_update_status, update_stats, cached_dashboard_data
     
     if not calendar_instance:
         return
@@ -1072,9 +1359,9 @@ def auto_update():
                 'message': 'OK'
             }
             
-            processed_data = calendar_instance.process_motorsport_data()
-            stats = processed_data.get('stats', {})
+            cached_dashboard_data = calendar_instance.process_motorsport_data()
             
+            stats = cached_dashboard_data.get('stats', {})
             log_update('SUCCESS', 'Auto OK', stats.get('total_events', 0), stats.get('unassigned_events', 0))
             logger.info(f"✅ Auto-actualización OK - {stats.get('total_events', 0)} eventos")
         else:
@@ -1110,8 +1397,8 @@ def start_scheduler():
     scheduler_thread.start()
 
 if __name__ == "__main__":
-    logger.info("🏁 Calendario Motorsport Enterprise")
-    logger.info("🌐 Optimizado para Railway deployment")
+    logger.info("🏁 Calendario Motorsport Enterprise v2.0")
+    logger.info("🌐 Dashboard Visual + Excel SharePoint")
     
     port = int(os.environ.get('PORT', 5000))
     
