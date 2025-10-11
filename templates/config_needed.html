@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Requerida - Events Calendar AKS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 2em;
+        }
+        
+        p {
+            color: #7f8c8d;
+            margin: 15px 0;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-top: 30px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .steps h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .steps ol {
+            padding-left: 20px;
+            color: #555;
+        }
+        
+        .steps li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚙️</div>
+        <h1>Sistema No Configurado</h1>
+        
+        <p>
+            <strong>Events Calendar AKS</strong> necesita ser configurado antes de poder usarse.
+        </p>
+        
+        <p>
+            Necesitarás las credenciales de <strong>Airtable</strong> y <strong>Microsoft Azure</strong> para conectar el sistema.
+        </p>
+        
+        <div class="steps">
+            <h3>📋 Pasos para configurar:</h3>
+            <ol>
+                <li>Haz clic en el botón "Configurar Sistema"</li>
+                <li>Ingresa tu <strong>Token de Airtable</strong></li>
+                <li>Ingresa las credenciales de <strong>Azure App Registration</strong>:
+                    <ul style="margin-top: 5px;">
+                        <li>Tenant ID</li>
+                        <li>Client ID</li>
+                        <li>Client Secret</li>
+                    </ul>
+                </li>
+                <li>Ingresa la <strong>URL de SharePoint</strong></li>
+                <li>¡Listo! El sistema empezará a funcionar</li>
+            </ol>
+        </div>
+        
+        <a href="/config" class="btn">⚙️ Configurar Sistema</a>
+        
+        <p style="margin-top: 30px; font-size: 0.9em; color: #95a5a6;">
+            <strong>Al Kamel Management</strong> - Events Calendar AKS
+        </p>
+    </div>
+</body>
+</html>
