@@ -184,6 +184,44 @@
             vertical-align: middle;
         }
         
+        /* NUEVO: Indicadores de viaje */
+        .travel-indicator {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        
+        .travel-indicator.from-previous {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .travel-indicator.to-next {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .person-with-travel {
+            background: #e3f2fd;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            color: #1976d2;
+            position: relative;
+            display: inline-block;
+            margin: 2px;
+        }
+        
+        .person-with-travel::before {
+            content: '✈️';
+            margin-right: 4px;
+        }
+        
         /* Buscador disponibilidad */
         .availability-search {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -312,6 +350,7 @@
             .search-form { grid-template-columns: 1fr; }
             table { font-size: 0.85em; }
         }
+        
         /* MODAL DE EVENTO */
         .modal {
             display: none;
@@ -571,7 +610,7 @@
                         <th>SET</th>
                         <th>Coordinador</th>
                         <th>Fecha</th>
-                        <th>Personal</th>
+                        <th>Personal (✈️ = viaja desde otro evento)</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -586,7 +625,16 @@
                         </td>
                         <td>{{ event.coordinator }}</td>
                         <td>{{ event.from_date.strftime('%d/%m/%Y') }}</td>
-                        <td>{{ event.employees_count }}</td>
+                        <td>
+                            {% if event.reservations %}
+                                {{ event.employees_count }} persona(s)
+                                {% if event.get('people_with_travel') %}
+                                    <br><span class="travel-indicator">✈️ {{ event.people_with_travel|length }} viaja(n)</span>
+                                {% endif %}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
                         <td>
                             {% if event.needs_attention %}
                             <span class="status-badge badge-critical">⚠️ Sin Personal</span>
@@ -634,7 +682,8 @@
                 {% if event.reservations %}
                 <div style="display: flex; flex-wrap: wrap; gap: 6px;">
                     {% for res in event.reservations %}
-                    <span style="background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 12px; font-size: 0.85em;">
+                    <span class="{% if res.get('has_travel_connection') %}person-with-travel{% else %}{% endif %}" 
+                          style="{% if not res.get('has_travel_connection') %}background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 12px; font-size: 0.85em;{% endif %}">
                         👤 {{ res.employee }}
                     </span>
                     {% endfor %}
@@ -758,7 +807,7 @@
             tabs[index].classList.add('active');
         }
         
-        // Buscar personal disponible (CON CONVERSIÓN DE FECHAS)
+        // Buscar personal disponible
         function searchAvailableStaff() {
             const startDateInput = document.getElementById('search-start-date').value;
             const endDateInput = document.getElementById('search-end-date').value;
@@ -769,20 +818,16 @@
                 return;
             }
             
-            // Convertir formato DD/MM/YYYY a YYYY-MM-DD si es necesario
             function formatDate(dateStr) {
-                // Si ya está en formato YYYY-MM-DD, devolverlo tal cual
                 if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
                     return dateStr;
                 }
                 
-                // Si está en formato DD/MM/YYYY, convertir
                 if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
                     const parts = dateStr.split('/');
                     return `${parts[2]}-${parts[1]}-${parts[0]}`;
                 }
                 
-                // Intentar parsear con Date
                 const date = new Date(dateStr);
                 if (!isNaN(date.getTime())) {
                     const year = date.getFullYear();
@@ -797,20 +842,15 @@
             const startDate = formatDate(startDateInput);
             const endDate = formatDate(endDateInput);
             
-            console.log('Fechas convertidas:', startDate, endDate); // Debug
-            
-            // Mostrar loading
             document.getElementById('search-results-container').style.display = 'none';
             document.getElementById('search-error').style.display = 'none';
             document.getElementById('search-loading').style.display = 'block';
             
-            // Construir URL
             let url = `/api/available-staff?start_date=${startDate}&end_date=${endDate}`;
             if (roleInput) {
                 url += `&role=${roleInput}`;
             }
             
-            // Hacer petición
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
@@ -877,12 +917,12 @@
             messageElement.textContent = message;
             errorElement.style.display = 'block';
         }
-    // FUNCIONES DEL MODAL DE EVENTO
+        
+        // FUNCIONES DEL MODAL DE EVENTO
         function openEventModal(eventId) {
             const modal = document.getElementById('event-modal');
             modal.style.display = 'block';
             
-            // Cargar detalles del evento
             fetch(`/api/event-details/${eventId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -909,11 +949,9 @@
             const next = data.next_event;
             const travel = data.travel_analysis;
             
-            // Título
             document.getElementById('modal-event-title').innerHTML = 
                 `🏁 ${event.event_name}`;
             
-            // Contenido
             let html = `
                 <!-- INFO BÁSICA -->
                 <div class="modal-section">
@@ -1039,13 +1077,13 @@
                     <div class="travel-info">
                         ${travel.has_previous ? `
                             <div class="travel-info-item">
-                                📍 <strong>${travel.days_from_previous} días</strong> desde evento anterior
+                                📏 <strong>${travel.days_from_previous} días</strong> desde evento anterior
                                 ${travel.days_from_previous <= 2 ? ' ⚠️ <em>Tiempo ajustado para viaje</em>' : ''}
                             </div>
                         ` : ''}
                         ${travel.has_next ? `
                             <div class="travel-info-item">
-                                📍 <strong>${travel.days_to_next} días</strong> hasta evento siguiente
+                                📏 <strong>${travel.days_to_next} días</strong> hasta evento siguiente
                                 ${travel.days_to_next <= 2 ? ' ⚠️ <em>Tiempo ajustado para viaje</em>' : ''}
                             </div>
                         ` : ''}
@@ -1074,7 +1112,6 @@
             `;
         }
         
-        // Cerrar modal al hacer click fuera
         window.onclick = function(event) {
             const modal = document.getElementById('event-modal');
             if (event.target == modal) {
@@ -1082,7 +1119,8 @@
             }
         }
     </script>
-<!-- MODAL DE EVENTO DETALLADO -->
+
+    <!-- MODAL DE EVENTO DETALLADO -->
     <div id="event-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
