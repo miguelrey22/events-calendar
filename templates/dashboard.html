@@ -312,6 +312,206 @@
             .search-form { grid-template-columns: 1fr; }
             table { font-size: 0.85em; }
         }
+        /* MODAL DE EVENTO */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideDown 0.3s;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+        
+        .modal-body {
+            padding: 30px;
+            max-height: calc(90vh - 100px);
+            overflow-y: auto;
+        }
+        
+        .modal-section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .modal-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .modal-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .event-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .detail-label {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        
+        .staff-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .staff-item {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .staff-item.conflict {
+            border-left-color: #e74c3c;
+            background: #ffebee;
+        }
+        
+        .staff-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .staff-dates {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .related-event {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .related-event.warning {
+            border-left-color: #e67e22;
+            background: #fff3e0;
+        }
+        
+        .related-event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .related-event-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .related-event-details {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .travel-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .travel-info-item {
+            margin: 8px 0;
+            font-size: 0.95em;
+            color: #2c3e50;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -378,7 +578,7 @@
                 <tbody>
                     {% for event in events[:20] %}
                     <tr>
-                        <td><strong>{{ event.event_name }}</strong></td>
+                        <td><strong style="cursor: pointer; color: #3498db;" onclick="openEventModal('{{ event.event_id }}')">{{ event.event_name }}</strong></td>
                         <td>{{ event.city }}</td>
                         <td>
                             <span class="color-dot" style="background: {{ event.color }};"></span>
@@ -419,7 +619,7 @@
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid {{ event.color }};">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                     <div>
-                        <strong style="font-size: 1.1em; color: #2c3e50;">{{ event.event_name }}</strong>
+                       <strong style="font-size: 1.1em; color: #3498db; cursor: pointer;" onclick="openEventModal('{{ event.event_id }}')">{{ event.event_name }}</strong>
                         <div style="color: #7f8c8d; font-size: 0.9em; margin-top: 5px;">
                             📍 {{ event.city }} | 📅 {{ event.from_date.strftime('%d/%m/%Y') }} - {{ event.to_date.strftime('%d/%m/%Y') }}
                         </div>
@@ -677,6 +877,224 @@
             messageElement.textContent = message;
             errorElement.style.display = 'block';
         }
+    // FUNCIONES DEL MODAL DE EVENTO
+        function openEventModal(eventId) {
+            const modal = document.getElementById('event-modal');
+            modal.style.display = 'block';
+            
+            // Cargar detalles del evento
+            fetch(`/api/event-details/${eventId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderEventModal(data);
+                    } else {
+                        showModalError(data.error || 'Error cargando evento');
+                    }
+                })
+                .catch(error => {
+                    showModalError('Error de conexión: ' + error.message);
+                });
+        }
+        
+        function closeEventModal() {
+            document.getElementById('event-modal').style.display = 'none';
+        }
+        
+        function renderEventModal(data) {
+            const event = data.event;
+            const staff = data.staff;
+            const simultaneous = data.simultaneous_events;
+            const previous = data.previous_event;
+            const next = data.next_event;
+            const travel = data.travel_analysis;
+            
+            // Título
+            document.getElementById('modal-event-title').innerHTML = 
+                `🏁 ${event.event_name}`;
+            
+            // Contenido
+            let html = `
+                <!-- INFO BÁSICA -->
+                <div class="modal-section">
+                    <div class="event-detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">📅 Fechas</div>
+                            <div class="detail-value">${event.from_date} - ${event.to_date}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">⏱️ Duración</div>
+                            <div class="detail-value">${event.duration_days} día${event.duration_days > 1 ? 's' : ''}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">📍 Ciudad</div>
+                            <div class="detail-value">${event.city}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">🏆 SET</div>
+                            <div class="detail-value">
+                                <span class="color-dot" style="background: ${event.color};"></span>
+                                ${event.set_name}
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">👤 Coordinador</div>
+                            <div class="detail-value">${event.coordinator}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PERSONAL ASIGNADO -->
+                <div class="modal-section">
+                    <h3>👥 Personal Asignado (${staff.length})</h3>
+                    ${staff.length > 0 ? `
+                        <div class="staff-list">
+                            ${staff.map(person => `
+                                <div class="staff-item ${person.has_conflict ? 'conflict' : ''}">
+                                    <div>
+                                        <div class="staff-name">
+                                            ${person.name}
+                                            ${person.has_conflict ? ' ⚠️ CONFLICTO' : ''}
+                                            ${person.remote ? ' 🏠 Remoto' : ''}
+                                        </div>
+                                        <div class="staff-dates">${person.from_date} - ${person.to_date}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<div class="no-data">❌ Sin personal asignado</div>'}
+                </div>
+                
+                <!-- EVENTOS SIMULTÁNEOS -->
+                ${simultaneous.length > 0 ? `
+                    <div class="modal-section">
+                        <h3>🗓️ Eventos Simultáneos (${simultaneous.length})</h3>
+                        ${simultaneous.map(simEvent => `
+                            <div class="related-event ${simEvent.shared_staff.length > 0 ? 'warning' : ''}">
+                                <div class="related-event-header">
+                                    <div class="related-event-title">
+                                        ${simEvent.shared_staff.length > 0 ? '⚠️ ' : ''}${simEvent.event_name}
+                                    </div>
+                                    <span style="background: ${simEvent.color}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.85em;">
+                                        ${simEvent.set_name}
+                                    </span>
+                                </div>
+                                <div class="related-event-details">
+                                    📍 ${simEvent.city} | 📅 ${simEvent.from_date} - ${simEvent.to_date}
+                                </div>
+                                ${simEvent.shared_staff.length > 0 ? `
+                                    <div style="margin-top: 10px; padding: 8px; background: rgba(230, 126, 34, 0.1); border-radius: 4px;">
+                                        <strong>⚠️ Personal compartido:</strong> ${simEvent.shared_staff.join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                <!-- EVENTO ANTERIOR/SIGUIENTE -->
+                ${(previous || next) ? `
+                    <div class="modal-section">
+                        <h3>📆 Contexto Temporal</h3>
+                        
+                        ${previous ? `
+                            <div style="margin-bottom: 15px;">
+                                <h4 style="color: #7f8c8d; font-size: 0.95em; margin-bottom: 10px;">⏮️ Evento Anterior (${previous.days_before} día${previous.days_before > 1 ? 's' : ''} antes)</h4>
+                                <div class="related-event">
+                                    <div class="related-event-header">
+                                        <div class="related-event-title">${previous.event_name}</div>
+                                        <span style="background: ${previous.color}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.85em;">
+                                            ${previous.set_name}
+                                        </span>
+                                    </div>
+                                    <div class="related-event-details">
+                                        📍 ${previous.city} | 📅 ${previous.from_date} - ${previous.to_date}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${next ? `
+                            <div>
+                                <h4 style="color: #7f8c8d; font-size: 0.95em; margin-bottom: 10px;">⏭️ Evento Siguiente (${next.days_after} día${next.days_after > 1 ? 's' : ''} después)</h4>
+                                <div class="related-event">
+                                    <div class="related-event-header">
+                                        <div class="related-event-title">${next.event_name}</div>
+                                        <span style="background: ${next.color}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.85em;">
+                                            ${next.set_name}
+                                        </span>
+                                    </div>
+                                    <div class="related-event-details">
+                                        📍 ${next.city} | 📅 ${next.from_date} - ${next.to_date}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+                
+                <!-- ANÁLISIS DE VIAJES -->
+                <div class="modal-section">
+                    <h3>✈️ Planificación de Viajes</h3>
+                    <div class="travel-info">
+                        ${travel.has_previous ? `
+                            <div class="travel-info-item">
+                                📍 <strong>${travel.days_from_previous} días</strong> desde evento anterior
+                                ${travel.days_from_previous <= 2 ? ' ⚠️ <em>Tiempo ajustado para viaje</em>' : ''}
+                            </div>
+                        ` : ''}
+                        ${travel.has_next ? `
+                            <div class="travel-info-item">
+                                📍 <strong>${travel.days_to_next} días</strong> hasta evento siguiente
+                                ${travel.days_to_next <= 2 ? ' ⚠️ <em>Tiempo ajustado para viaje</em>' : ''}
+                            </div>
+                        ` : ''}
+                        ${!travel.has_previous && !travel.has_next ? `
+                            <div class="travel-info-item">
+                                ℹ️ Primer o último evento del calendario
+                            </div>
+                        ` : ''}
+                        ${staff.length > 0 ? `
+                            <div class="travel-info-item">
+                                👥 <strong>${staff.length} persona${staff.length > 1 ? 's' : ''}</strong> puede${staff.length > 1 ? 'n' : ''} coordinarse para viajar juntas
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-body-content').innerHTML = html;
+        }
+        
+        function showModalError(message) {
+            document.getElementById('modal-body-content').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <p style="color: #e74c3c; font-size: 1.2em;">❌ ${message}</p>
+                </div>
+            `;
+        }
+        
+        // Cerrar modal al hacer click fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('event-modal');
+            if (event.target == modal) {
+                closeEventModal();
+            }
+        }
     </script>
+<!-- MODAL DE EVENTO DETALLADO -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-event-title">Cargando...</h2>
+                <button class="modal-close" onclick="closeEventModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+                <div style="text-align: center; padding: 40px;">
+                    <p style="font-size: 1.2em; color: #7f8c8d;">🔄 Cargando información del evento...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

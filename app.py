@@ -600,6 +600,144 @@ def api_available_staff():
         'staff': available
     })
 
+@app.route('/api/event-details/<event_id>')
+def api_event_details(event_id):
+    """API para obtener detalles completos de un evento"""
+    global calendar_instance, cached_dashboard_data
+    
+    if not calendar_instance or not cached_dashboard_data:
+        return jsonify({'error': 'Sistema no configurado'}), 400
+    
+    try:
+        # Buscar el evento
+        target_event = None
+        for event in cached_dashboard_data['events']:
+            if event['event_id'] == event_id:
+                target_event = event
+                break
+        
+        if not target_event:
+            return jsonify({'error': 'Evento no encontrado'}), 404
+        
+        # 1. Info básica del evento
+        event_info = {
+            'event_id': target_event['event_id'],
+            'event_name': target_event['event_name'],
+            'city': target_event['city'],
+            'set_name': target_event['set_name'],
+            'color': target_event['color'],
+            'coordinator': target_event['coordinator'],
+            'from_date': target_event['from_date'].strftime('%d/%m/%Y'),
+            'to_date': target_event['to_date'].strftime('%d/%m/%Y'),
+            'duration_days': target_event['duration_days']
+        }
+        
+        # 2. Personal asignado
+        staff = []
+        for res in target_event['reservations']:
+            # Verificar si tiene conflictos
+            has_conflict = False
+            for conflict in cached_dashboard_data['conflicts']:
+                if conflict['employee'] == res['employee']:
+                    has_conflict = True
+                    break
+            
+            staff.append({
+                'name': res['employee'],
+                'from_date': res['from_date'].strftime('%d/%m/%Y'),
+                'to_date': res['to_date'].strftime('%d/%m/%Y'),
+                'remote': res['remote'],
+                'has_conflict': has_conflict
+            })
+        
+        # 3. Eventos simultáneos (mismas fechas)
+        simultaneous_events = []
+        for event in cached_dashboard_data['events']:
+            if event['event_id'] == event_id:
+                continue
+            
+            # Verificar si hay solapamiento de fechas
+            if not (event['to_date'] < target_event['from_date'] or 
+                    event['from_date'] > target_event['to_date']):
+                
+                # Buscar personal compartido
+                shared_staff = []
+                for res in event['reservations']:
+                    for target_res in target_event['reservations']:
+                        if res['employee'] == target_res['employee']:
+                            shared_staff.append(res['employee'])
+                
+                simultaneous_events.append({
+                    'event_id': event['event_id'],
+                    'event_name': event['event_name'],
+                    'city': event['city'],
+                    'set_name': event['set_name'],
+                    'color': event['color'],
+                    'from_date': event['from_date'].strftime('%d/%m/%Y'),
+                    'to_date': event['to_date'].strftime('%d/%m/%Y'),
+                    'shared_staff': shared_staff
+                })
+        
+        # 4. Evento anterior más cercano
+        previous_event = None
+        min_days_before = float('inf')
+        for event in cached_dashboard_data['events']:
+            if event['to_date'] < target_event['from_date']:
+                days_diff = (target_event['from_date'] - event['to_date']).days
+                if days_diff < min_days_before:
+                    min_days_before = days_diff
+                    previous_event = {
+                        'event_id': event['event_id'],
+                        'event_name': event['event_name'],
+                        'city': event['city'],
+                        'set_name': event['set_name'],
+                        'color': event['color'],
+                        'from_date': event['from_date'].strftime('%d/%m/%Y'),
+                        'to_date': event['to_date'].strftime('%d/%m/%Y'),
+                        'days_before': days_diff
+                    }
+        
+        # 5. Evento siguiente más cercano
+        next_event = None
+        min_days_after = float('inf')
+        for event in cached_dashboard_data['events']:
+            if event['from_date'] > target_event['to_date']:
+                days_diff = (event['from_date'] - target_event['to_date']).days
+                if days_diff < min_days_after:
+                    min_days_after = days_diff
+                    next_event = {
+                        'event_id': event['event_id'],
+                        'event_name': event['event_name'],
+                        'city': event['city'],
+                        'set_name': event['set_name'],
+                        'color': event['color'],
+                        'from_date': event['from_date'].strftime('%d/%m/%Y'),
+                        'to_date': event['to_date'].strftime('%d/%m/%Y'),
+                        'days_after': days_diff
+                    }
+        
+        # 6. Análisis de viajes
+        travel_analysis = {
+            'has_previous': previous_event is not None,
+            'has_next': next_event is not None,
+            'days_from_previous': min_days_before if previous_event else None,
+            'days_to_next': min_days_after if next_event else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'event': event_info,
+            'staff': staff,
+            'simultaneous_events': simultaneous_events,
+            'previous_event': previous_event,
+            'next_event': next_event,
+            'travel_analysis': travel_analysis
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo detalles de evento: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     logger.info("🏁 Events Calendar AKS - Al Kamel Management")
     
@@ -611,5 +749,3 @@ if __name__ == "__main__":
         debug=False,
         threaded=True
     )
-
-    
