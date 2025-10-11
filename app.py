@@ -239,6 +239,12 @@ class EventsCalendarAKS:
         employees_data = self.get_airtable_data('Employee directory')
         reservations_data = self.get_airtable_data('EVENTS RESERVATIONS')
         
+        # Emails genéricos a excluir (no son personas físicas)
+        generic_emails = [
+            'info@', 'admin@', 'operations@', 'contact@', 'support@',
+            'hello@', 'office@', 'general@', 'staff@', 'team@'
+        ]
+        
         available_staff = []
         
         for emp_record in employees_data:
@@ -247,6 +253,22 @@ class EventsCalendarAKS:
             emp_email = emp_fields.get('EMAIL', '')
             emp_role = emp_fields.get('POSITION', '')
             
+            # FILTRO 1: Excluir CUALQUIER nombre que contenga @ (es un email, no una persona)
+            if '@' in emp_name:
+                logger.debug(f"Excluido email como nombre: {emp_name}")
+                continue
+            
+            # FILTRO 2: Excluir si el nombre es demasiado corto (probablemente no es persona real)
+            if len(emp_name.strip()) < 3:
+                continue
+            
+            # FILTRO 3: Excluir nombres que son claramente genéricos
+            generic_names = ['operations', 'admin', 'info', 'contact', 'support', 'office', 'staff', 'team', 'general']
+            if any(generic.lower() in emp_name.lower() for generic in generic_names):
+                logger.debug(f"Excluido nombre genérico: {emp_name}")
+                continue
+            
+            # FILTRO 3: Filtrar por rol si se especifica
             if role_filter and role_filter.lower() not in emp_role.lower():
                 continue
             
@@ -589,3 +611,5 @@ if __name__ == "__main__":
         debug=False,
         threaded=True
     )
+
+    
