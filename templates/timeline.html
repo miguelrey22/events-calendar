@@ -3,195 +3,400 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timeline Gantt - Events Calendar AKS</title>
+    <title>Timeline Calendar - Events Calendar AKS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f7;
+            padding: 0;
             min-height: 100vh;
         }
         
         .header {
-            background: linear-gradient(45deg, #2c3e50, #34495e);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 12px 12px 0 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .header h1 { font-size: 2em; margin-bottom: 5px; }
-        
-        .timeline-container {
             background: white;
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            overflow: hidden;
-        }
-        
-        .controls {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
+            padding: 20px 40px;
+            border-bottom: 1px solid #e0e0e0;
             display: flex;
-            gap: 15px;
+            justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .control-group label {
-            font-size: 0.85em;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .control-group select,
-        .control-group input {
-            padding: 8px 12px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .gantt-wrapper {
-            overflow: auto;
-            max-height: calc(100vh - 200px);
-        }
-        
-        .gantt-table {
-            width: max-content;
-            min-width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-        
-        .gantt-table th {
-            background: #2c3e50;
-            color: white;
-            padding: 10px 8px;
-            text-align: center;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            color: #1d1d1f;
             font-weight: 600;
-            border-right: 1px solid rgba(255,255,255,0.2);
-            white-space: nowrap;
         }
         
-        .gantt-table th.date-col {
-            width: 90px;
-            background: #34495e;
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
         
-        .gantt-table th.week-col {
-            width: 70px;
-            background: #34495e;
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
         }
         
-        .gantt-table th.set-col {
-            min-width: 100px;
-            background: #3498db;
+        .btn-primary {
+            background: #007aff;
+            color: white;
         }
         
-        .gantt-table th.employee-col {
-            min-width: 120px;
-            background: #27ae60;
+        .btn-primary:hover {
+            background: #0051d5;
         }
         
-        .gantt-table td {
-            padding: 4px 8px;
-            border: 1px solid #e9ecef;
+        .btn-secondary {
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+        
+        .btn-secondary:hover {
+            background: #e8e8ed;
+        }
+        
+        .controls-bar {
+            background: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .view-tabs {
+            display: flex;
+            gap: 5px;
+            background: #f5f5f7;
+            padding: 4px;
+            border-radius: 10px;
+        }
+        
+        .view-tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #1d1d1f;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .view-tab.active {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .nav-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover {
+            background: #e8e8ed;
+        }
+        
+        .period-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            min-width: 180px;
             text-align: center;
-            height: 35px;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d1d6;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .calendar-container {
+            padding: 40px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        /* VISTA MENSUAL */
+        .month-grid {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: #f5f5f7;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .weekday {
+            padding: 15px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: #86868b;
+            text-transform: uppercase;
+        }
+        
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+        }
+        
+        .day-cell {
+            background: white;
+            min-height: 120px;
+            padding: 8px;
             position: relative;
         }
         
-        .gantt-table td.date-cell {
-            background: #f8f9fa;
+        .day-cell.other-month {
+            background: #fafafa;
+            opacity: 0.5;
+        }
+        
+        .day-cell.today {
+            background: #e8f4ff;
+        }
+        
+        .day-number {
+            font-size: 14px;
             font-weight: 600;
-            text-align: left;
-            padding-left: 12px;
-            position: sticky;
-            left: 0;
-            z-index: 5;
-            border-right: 2px solid #dee2e6;
+            color: #1d1d1f;
+            margin-bottom: 4px;
         }
         
-        .gantt-table td.week-cell {
-            background: #fff3cd;
-            font-weight: bold;
-            color: #856404;
-            position: sticky;
-            left: 90px;
-            z-index: 5;
-            border-right: 2px solid #dee2e6;
+        .day-cell.today .day-number {
+            color: #007aff;
+            background: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        .gantt-table tr:nth-child(even) td.date-cell {
-            background: #e9ecef;
-        }
-        
-        .event-cell {
+        .event-bar {
+            padding: 4px 8px;
+            margin-bottom: 3px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
-            font-size: 10px;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
             cursor: pointer;
             transition: all 0.2s;
-            border-radius: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding: 6px 4px;
+            position: relative;
         }
         
-        .event-cell:hover {
-            transform: scale(1.05);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-            z-index: 20;
+        .event-bar:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
         }
         
-        .employee-cell {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            font-weight: 600;
-            color: #155724;
+        .event-bar.conflict {
+            border: 2px solid #ff3b30;
+            animation: pulse-conflict 2s infinite;
         }
         
-        .employee-cell.conflict {
-            background: #f8d7da;
-            border: 2px solid #f5c6cb;
-            color: #721c24;
-            animation: blink 2s infinite;
+        @keyframes pulse-conflict {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
+            50% { box-shadow: 0 0 0 4px rgba(255, 59, 48, 0); }
         }
         
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.5; }
-        }
-        
-        .employee-cell.travel {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-        }
-        
-        .legend {
-            padding: 15px 20px;
-            background: #f8f9fa;
+        .conflict-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ff3b30;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+        
+        /* VISTA ANUAL */
+        .year-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        
+        .mini-month {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .mini-month-header {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1d1d1f;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .mini-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin-bottom: 5px;
+        }
+        
+        .mini-weekday {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #86868b;
+            padding: 5px 0;
+        }
+        
+        .mini-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        
+        .mini-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .mini-day.has-events {
+            background: #e8f4ff;
+            font-weight: 600;
+            color: #007aff;
+        }
+        
+        .mini-day.has-conflicts {
+            background: #ffe5e5;
+            color: #ff3b30;
+            font-weight: 700;
+        }
+        
+        .mini-day.today {
+            background: #007aff;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .mini-day.other-month {
+            color: #d1d1d6;
+        }
+        
+        .event-dot {
+            position: absolute;
+            bottom: 2px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #007aff;
+        }
+        
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #007aff;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #86868b;
+            font-weight: 500;
+        }
+        
+        .stat-card.conflicts .stat-value {
+            color: #ff3b30;
+        }
+        
+        /* LEYENDA */
+        .legend {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1d1d1f;
+        }
+        
+        .legend-items {
+            display: flex;
             flex-wrap: wrap;
-            border-top: 2px solid #dee2e6;
+            gap: 20px;
         }
         
         .legend-item {
@@ -201,163 +406,90 @@
         }
         
         .legend-color {
-            width: 30px;
-            height: 20px;
-            border-radius: 3px;
-            border: 1px solid #dee2e6;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
         }
         
-        .stats-bar {
-            padding: 15px 20px;
-            background: #e3f2fd;
-            border-top: 2px solid #90caf9;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
+        .legend-text {
+            font-size: 13px;
+            color: #1d1d1f;
         }
         
-        .stat-item {
+        .empty-state {
             text-align: center;
+            padding: 80px 20px;
+            color: #86868b;
         }
         
-        .stat-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #1976d2;
-        }
-        
-        .stat-label {
-            font-size: 0.85em;
-            color: #555;
-        }
-        
-        .empty-cell {
-            background: white;
-        }
-        
-        .today-row {
-            background: #fff3cd !important;
-        }
-        
-        .weekend-row td.date-cell {
-            background: #ffe5b4 !important;
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📅 Timeline Gantt - Calendar 2025</h1>
-        <p>Vista cronológica de eventos y personal</p>
+        <div>
+            <h1>📅 CALENDAR</h1>
+            <div style="font-size: 13px; color: #86868b; margin-top: 5px;">
+                Dashboard / <span style="color: #1d1d1f; font-weight: 600;">Calendar</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="location.href='/'">← Dashboard</button>
+        </div>
     </div>
     
-    <div class="timeline-container">
-        <div class="controls">
-            <div class="control-group">
-                <label>📅 Mes</label>
-                <select id="month-filter">
-                    <option value="">Todos los meses</option>
-                    <option value="01">Enero</option>
-                    <option value="02">Febrero</option>
-                    <option value="03">Marzo</option>
-                    <option value="04">Abril</option>
-                    <option value="05">Mayo</option>
-                    <option value="06">Junio</option>
-                    <option value="07">Julio</option>
-                    <option value="08">Agosto</option>
-                    <option value="09">Septiembre</option>
-                    <option value="10" selected>Octubre</option>
-                    <option value="11">Noviembre</option>
-                    <option value="12">Diciembre</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label>🎯 Vista</label>
-                <select id="view-mode">
-                    <option value="all">Todos (Eventos + Personal)</option>
-                    <option value="events">Solo Eventos</option>
-                    <option value="employees">Solo Personal</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label>⚠️ Filtro Conflictos</label>
-                <select id="conflict-filter">
-                    <option value="all">Todos</option>
-                    <option value="conflicts">Solo Conflictos</option>
-                    <option value="no-conflicts">Sin Conflictos</option>
-                </select>
-            </div>
-            
-            <button onclick="location.href='/'" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                ← Volver al Dashboard
+    <div class="controls-bar">
+        <div class="view-tabs">
+            <button class="view-tab active" data-view="events" onclick="switchViewType('events')">
+                📅 Events
+            </button>
+            <button class="view-tab" data-view="employees" onclick="switchViewType('employees')">
+                👥 Employees
             </button>
         </div>
         
-        <div class="stats-bar">
-            <div class="stat-item">
-                <div class="stat-value" id="total-events">0</div>
-                <div class="stat-label">Eventos</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="total-assignments">0</div>
-                <div class="stat-label">Asignaciones</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="total-conflicts">0</div>
-                <div class="stat-label">Conflictos</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="active-employees">0</div>
-                <div class="stat-label">Empleados Activos</div>
-            </div>
+        <div class="nav-controls">
+            <button class="nav-btn" onclick="previousPeriod()">‹</button>
+            <div class="period-title" id="period-title">October 2025</div>
+            <button class="nav-btn" onclick="nextPeriod()">›</button>
+            <button class="btn btn-secondary" onclick="goToToday()">Today</button>
         </div>
         
-        <div class="gantt-wrapper">
-            <table class="gantt-table" id="gantt-table">
-                <thead id="table-header"></thead>
-                <tbody id="table-body"></tbody>
-            </table>
+        <div class="filters">
+            <select class="filter-select" id="view-mode" onchange="renderCalendar()">
+                <option value="month">Month view</option>
+                <option value="year">Year view</option>
+            </select>
+            
+            <select class="filter-select" id="conflict-filter" onchange="renderCalendar()">
+                <option value="all">All</option>
+                <option value="conflicts">⚠️ Only Conflicts</option>
+                <option value="no-conflicts">✓ No Conflicts</option>
+            </select>
+            
+            <select class="filter-select" id="set-filter" onchange="renderCalendar()">
+                <option value="all">All Sets</option>
+            </select>
         </div>
-        
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #FF6B6B;"></div>
-                <span>SET 1 (WEC/FIA)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #4ECDC4;"></div>
-                <span>SET 2</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #45B7D1;"></div>
-                <span>SET 3</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #27AE60;"></div>
-                <span>SET 5 (ELMS)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #d4edda;"></div>
-                <span>✅ Asignado</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #f8d7da;"></div>
-                <span>⚠️ Conflicto</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #d1ecf1;"></div>
-                <span>✈️ Viaje</span>
-            </div>
-        </div>
+    </div>
+    
+    <div class="calendar-container">
+        <div class="stats-summary" id="stats-summary"></div>
+        <div id="calendar-content"></div>
+        <div class="legend" id="legend"></div>
     </div>
 
     <script>
         let eventsData = [];
         let conflictsData = [];
-        let employeesTimeline = {};
+        let currentDate = new Date();
+        let currentViewType = 'events'; // 'events' or 'employees'
+        let colorMapping = {};
         
-        // Cargar datos del dashboard
+        // Cargar datos
         async function loadData() {
             try {
                 const response = await fetch('/api/timeline-data');
@@ -366,207 +498,375 @@
                 if (data.success) {
                     eventsData = data.events;
                     conflictsData = data.conflicts;
-                    employeesTimeline = data.employee_timelines || {};
+                    colorMapping = data.color_mapping || {};
                     
-                    updateStats();
-                    renderGanttChart();
+                    populateSetFilter();
+                    renderStats();
+                    renderLegend();
+                    renderCalendar();
                 }
             } catch (error) {
-                console.error('Error cargando datos:', error);
-                alert('Error cargando datos del timeline');
+                console.error('Error:', error);
+                document.getElementById('calendar-content').innerHTML = `
+                    <div class="empty-state">
+                        <h3>❌ Error cargando datos</h3>
+                        <p>Intenta recargar la página</p>
+                    </div>
+                `;
             }
         }
         
-        function updateStats() {
-            document.getElementById('total-events').textContent = eventsData.length;
-            document.getElementById('total-conflicts').textContent = conflictsData.length;
+        function populateSetFilter() {
+            const sets = [...new Set(eventsData.map(e => e.set_name))].sort();
+            const select = document.getElementById('set-filter');
             
-            let totalAssignments = 0;
-            let activeEmployees = new Set();
-            
-            eventsData.forEach(event => {
-                totalAssignments += event.reservations.length;
-                event.reservations.forEach(res => {
-                    activeEmployees.add(res.employee);
-                });
+            sets.forEach(set => {
+                const option = document.createElement('option');
+                option.value = set;
+                option.textContent = set;
+                select.appendChild(option);
             });
-            
-            document.getElementById('total-assignments').textContent = totalAssignments;
-            document.getElementById('active-employees').textContent = activeEmployees.size;
         }
         
-        function renderGanttChart() {
-            const monthFilter = document.getElementById('month-filter').value;
+        function renderStats() {
+            const viewType = currentViewType;
+            let html = '';
+            
+            if (viewType === 'events') {
+                const totalEvents = eventsData.length;
+                const confirmedEvents = eventsData.filter(e => e.confirmed).length;
+                const unassignedEvents = eventsData.filter(e => e.needs_attention).length;
+                
+                html = `
+                    <div class="stat-card">
+                        <div class="stat-value">${totalEvents}</div>
+                        <div class="stat-label">Total Events</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${confirmedEvents}</div>
+                        <div class="stat-label">Confirmed</div>
+                    </div>
+                    <div class="stat-card conflicts">
+                        <div class="stat-value">${unassignedEvents}</div>
+                        <div class="stat-label">Unassigned</div>
+                    </div>
+                `;
+            } else {
+                const employees = new Set();
+                let totalAssignments = 0;
+                
+                eventsData.forEach(event => {
+                    event.reservations.forEach(res => {
+                        employees.add(res.employee);
+                        totalAssignments++;
+                    });
+                });
+                
+                html = `
+                    <div class="stat-card">
+                        <div class="stat-value">${employees.size}</div>
+                        <div class="stat-label">Active Employees</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalAssignments}</div>
+                        <div class="stat-label">Total Assignments</div>
+                    </div>
+                    <div class="stat-card conflicts">
+                        <div class="stat-value">${conflictsData.length}</div>
+                        <div class="stat-label">Conflicts</div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('stats-summary').innerHTML = html;
+        }
+        
+        function renderLegend() {
+            const sets = [...new Set(eventsData.map(e => e.set_name))].sort();
+            
+            let html = '<div class="legend-title">Legend</div><div class="legend-items">';
+            
+            sets.forEach(set => {
+                const color = eventsData.find(e => e.set_name === set)?.color || '#999';
+                html += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: ${color};"></div>
+                        <div class="legend-text">${set}</div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div class="legend-item">
+                    <div class="legend-color" style="background: white; border: 2px solid #ff3b30;"></div>
+                    <div class="legend-text">⚠️ Conflict</div>
+                </div>
+            `;
+            
+            html += '</div>';
+            document.getElementById('legend').innerHTML = html;
+        }
+        
+        function renderCalendar() {
             const viewMode = document.getElementById('view-mode').value;
+            
+            if (viewMode === 'month') {
+                renderMonthView();
+            } else {
+                renderYearView();
+            }
+        }
+        
+        function renderMonthView() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('period-title').textContent = 
+                currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
             const conflictFilter = document.getElementById('conflict-filter').value;
+            const setFilter = document.getElementById('set-filter').value;
             
-            // Filtrar eventos por mes
-            let filteredEvents = eventsData;
-            if (monthFilter) {
-                filteredEvents = eventsData.filter(event => {
-                    const eventMonth = event.from_date.split('-')[1];
-                    return eventMonth === monthFilter;
-                });
-            }
-            
-            // Obtener rango de fechas
-            if (filteredEvents.length === 0) {
-                document.getElementById('table-body').innerHTML = '<tr><td colspan="20" style="text-align:center; padding:40px;">No hay eventos en este período</td></tr>';
-                return;
-            }
-            
-            const startDate = new Date(Math.min(...filteredEvents.map(e => new Date(e.from_date))));
-            const endDate = new Date(Math.max(...filteredEvents.map(e => new Date(e.to_date))));
-            
-            // Generar todas las fechas en el rango
-            const dates = [];
-            const currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-                dates.push(new Date(currentDate));
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-            
-            // Obtener todos los SETs únicos
-            const sets = [...new Set(filteredEvents.map(e => e.set_name))].sort();
-            
-            // Obtener todos los empleados únicos
-            const employees = [...new Set(filteredEvents.flatMap(e => 
-                e.reservations.map(r => r.employee)
-            ))].sort();
-            
-            // Crear empleados con información de conflictos
-            const employeesWithConflicts = employees.map(empName => {
-                const hasConflict = conflictsData.some(c => c.employee === empName);
-                const conflictCount = conflictsData.filter(c => c.employee === empName).length;
-                return { name: empName, hasConflict, conflictCount };
+            let html = '<div class="month-grid">';
+            html += '<div class="weekdays">';
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+                html += `<div class="weekday">${day}</div>`;
             });
+            html += '</div><div class="days-grid">';
             
-            // Filtrar empleados según filtro de conflictos
-            let displayEmployees = employeesWithConflicts;
-            if (conflictFilter === 'conflicts') {
-                displayEmployees = employeesWithConflicts.filter(e => e.hasConflict);
-            } else if (conflictFilter === 'no-conflicts') {
-                displayEmployees = employeesWithConflicts.filter(e => !e.hasConflict);
-            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
-            // Renderizar headers
-            let headerHTML = '<tr>';
-            headerHTML += '<th class="date-col">📅 FECHA</th>';
-            headerHTML += '<th class="week-col">📆 SEMANA</th>';
-            
-            if (viewMode === 'all' || viewMode === 'events') {
-                sets.forEach(set => {
-                    headerHTML += `<th class="set-col">${set}</th>`;
-                });
-            }
-            
-            if (viewMode === 'all' || viewMode === 'employees') {
-                displayEmployees.forEach(emp => {
-                    const conflictBadge = emp.hasConflict ? ' ⚠️' : '';
-                    headerHTML += `<th class="employee-col">${emp.name}${conflictBadge}</th>`;
-                });
-            }
-            
-            headerHTML += '</tr>';
-            document.getElementById('table-header').innerHTML = headerHTML;
-            
-            // Renderizar filas
-            let bodyHTML = '';
-            dates.forEach((date, dateIdx) => {
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
                 const dateStr = date.toISOString().split('T')[0];
-                const dayNum = date.getDate();
-                const monthNum = date.getMonth() + 1;
-                const weekNum = getWeekNumber(date);
-                const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()];
-                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                const isToday = dateStr === new Date().toISOString().split('T')[0];
                 
-                const rowClass = isToday ? 'today-row' : (isWeekend ? 'weekend-row' : '');
+                const isCurrentMonth = date.getMonth() === month;
+                const isToday = date.getTime() === today.getTime();
                 
-                bodyHTML += `<tr class="${rowClass}">`;
-                bodyHTML += `<td class="date-cell">${dayName} ${dayNum}/${monthNum}</td>`;
-                bodyHTML += `<td class="week-cell">${weekNum % 2 === 0 ? 'W'+weekNum : ''}</td>`;
+                let cellClass = 'day-cell';
+                if (!isCurrentMonth) cellClass += ' other-month';
+                if (isToday) cellClass += ' today';
                 
-                // Columnas de eventos
-                if (viewMode === 'all' || viewMode === 'events') {
-                    sets.forEach(set => {
-                        const eventsInSetOnDate = filteredEvents.filter(event => {
-                            return event.set_name === set && 
-                                   dateStr >= event.from_date && 
-                                   dateStr <= event.to_date;
-                        });
+                html += `<div class="${cellClass}">`;
+                html += `<div class="day-number">${date.getDate()}</div>`;
+                
+                // Filtrar eventos para este día
+                let dayEvents = eventsData.filter(event => {
+                    const inRange = dateStr >= event.from_date && dateStr <= event.to_date;
+                    const matchesSet = setFilter === 'all' || event.set_name === setFilter;
+                    return inRange && matchesSet;
+                });
+                
+                if (currentViewType === 'events') {
+                    // Filtrar por conflictos
+                    if (conflictFilter === 'conflicts') {
+                        dayEvents = dayEvents.filter(e => e.needs_attention);
+                    } else if (conflictFilter === 'no-conflicts') {
+                        dayEvents = dayEvents.filter(e => !e.needs_attention);
+                    }
+                    
+                    // Mostrar eventos (máximo 4)
+                    dayEvents.slice(0, 4).forEach(event => {
+                        const isFirstDay = dateStr === event.from_date;
+                        const hasConflict = event.needs_attention;
                         
-                        if (eventsInSetOnDate.length > 0) {
-                            const event = eventsInSetOnDate[0];
-                            const isFirstDay = dateStr === event.from_date;
-                            const eventText = isFirstDay ? event.city : '';
-                            bodyHTML += `<td class="event-cell" style="background: ${event.color};" onclick="openEventModal('${event.event_id}')" title="${event.event_name}">${eventText}</td>`;
-                        } else {
-                            bodyHTML += `<td class="empty-cell"></td>`;
+                        if (isFirstDay) {
+                            html += `
+                                <div class="event-bar ${hasConflict ? 'conflict' : ''}" 
+                                     style="background: ${event.color}; color: white;"
+                                     onclick="openEventDetails('${event.event_id}')"
+                                     title="${event.event_name}">
+                                    ${event.event_name}
+                                    ${hasConflict ? '<span class="conflict-badge">!</span>' : ''}
+                                </div>
+                            `;
                         }
                     });
-                }
-                
-                // Columnas de empleados
-                if (viewMode === 'all' || viewMode === 'employees') {
-                    displayEmployees.forEach(emp => {
-                        const assignmentsOnDate = filteredEvents.filter(event => {
-                            return event.reservations.some(r => 
-                                r.employee === emp.name && 
-                                dateStr >= r.from_date && 
-                                dateStr <= r.to_date
-                            );
+                    
+                    if (dayEvents.length > 4) {
+                        html += `<div style="font-size: 10px; color: #86868b; margin-top: 4px;">+${dayEvents.length - 4} more</div>`;
+                    }
+                } else {
+                    // Vista de empleados
+                    const employees = new Set();
+                    const employeeConflicts = new Set();
+                    
+                    dayEvents.forEach(event => {
+                        event.reservations.forEach(res => {
+                            if (dateStr >= res.from_date && dateStr <= res.to_date) {
+                                employees.add(res.employee);
+                                
+                                // Verificar si este empleado tiene conflicto este día
+                                const hasConflict = conflictsData.some(c => 
+                                    c.employee === res.employee &&
+                                    dateStr >= c.overlap_start.split('/').reverse().join('-') &&
+                                    dateStr <= c.overlap_end.split('/').reverse().join('-')
+                                );
+                                
+                                if (hasConflict) {
+                                    employeeConflicts.add(res.employee);
+                                }
+                            }
                         });
-                        
-                        if (assignmentsOnDate.length > 0) {
-                            const event = assignmentsOnDate[0];
-                            const reservation = event.reservations.find(r => r.employee === emp.name);
-                            const isFirstDay = dateStr === reservation.from_date;
-                            
-                            const hasConflict = assignmentsOnDate.length > 1;
-                            const hasTravel = reservation.has_travel_connection;
-                            
-                            let cellClass = 'employee-cell';
-                            if (hasConflict) cellClass += ' conflict';
-                            else if (hasTravel) cellClass += ' travel';
-                            
-                            const eventText = isFirstDay ? event.city : '';
-                            const conflictIcon = hasConflict ? '⚠️' : '';
-                            const travelIcon = hasTravel ? '✈️' : '';
-                            
-                            bodyHTML += `<td class="${cellClass}" onclick="openEventModal('${event.event_id}')" title="${event.event_name}">
-                                ${conflictIcon}${travelIcon}${eventText}
-                            </td>`;
-                        } else {
-                            bodyHTML += `<td class="empty-cell"></td>`;
-                        }
                     });
+                    
+                    // Filtrar por conflictos
+                    let displayEmployees = Array.from(employees);
+                    if (conflictFilter === 'conflicts') {
+                        displayEmployees = displayEmployees.filter(e => employeeConflicts.has(e));
+                    } else if (conflictFilter === 'no-conflicts') {
+                        displayEmployees = displayEmployees.filter(e => !employeeConflicts.has(e));
+                    }
+                    
+                    displayEmployees.slice(0, 4).forEach(empName => {
+                        const hasConflict = employeeConflicts.has(empName);
+                        const color = hasConflict ? '#ff3b30' : '#34c759';
+                        
+                        html += `
+                            <div class="event-bar ${hasConflict ? 'conflict' : ''}" 
+                                 style="background: ${color}; color: white;"
+                                 title="${empName}">
+                                ${empName}
+                                ${hasConflict ? '<span class="conflict-badge">!</span>' : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    if (displayEmployees.length > 4) {
+                        html += `<div style="font-size: 10px; color: #86868b; margin-top: 4px;">+${displayEmployees.length - 4} more</div>`;
+                    }
                 }
                 
-                bodyHTML += '</tr>';
-            });
+                html += '</div>';
+            }
             
-            document.getElementById('table-body').innerHTML = bodyHTML;
+            html += '</div></div>';
+            document.getElementById('calendar-content').innerHTML = html;
         }
         
-        function getWeekNumber(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        function renderYearView() {
+            const year = currentDate.getFullYear();
+            document.getElementById('period-title').textContent = year.toString();
+            
+            let html = '<div class="year-grid">';
+            
+            for (let month = 0; month < 12; month++) {
+                const monthDate = new Date(year, month, 1);
+                const monthName = monthDate.toLocaleDateString('en-US', { month: 'long' });
+                
+                html += `<div class="mini-month">`;
+                html += `<div class="mini-month-header">${monthName}</div>`;
+                html += `<div class="mini-weekdays">`;
+                ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
+                    html += `<div class="mini-weekday">${day}</div>`;
+                });
+                html += '</div><div class="mini-days">';
+                
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const startDate = new Date(firstDay);
+                startDate.setDate(startDate.getDate() - firstDay.getDay());
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                for (let i = 0; i < 42; i++) {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    const isCurrentMonth = date.getMonth() === month;
+                    const isToday = date.getTime() === today.getTime();
+                    
+                    const dayEvents = eventsData.filter(event => 
+                        dateStr >= event.from_date && dateStr <= event.to_date
+                    );
+                    
+                    const hasConflicts = currentViewType === 'employees' 
+                        ? conflictsData.some(c => {
+                            const start = c.overlap_start.split('/').reverse().join('-');
+                            const end = c.overlap_end.split('/').reverse().join('-');
+                            return dateStr >= start && dateStr <= end;
+                        })
+                        : dayEvents.some(e => e.needs_attention);
+                    
+                    let cellClass = 'mini-day';
+                    if (!isCurrentMonth) cellClass += ' other-month';
+                    if (isToday) cellClass += ' today';
+                    else if (hasConflicts) cellClass += ' has-conflicts';
+                    else if (dayEvents.length > 0) cellClass += ' has-events';
+                    
+                    html += `<div class="${cellClass}" onclick="jumpToDate('${dateStr}')">`;
+                    html += date.getDate();
+                    if (dayEvents.length > 0 && !isToday) {
+                        html += '<div class="event-dot"></div>';
+                    }
+                    html += '</div>';
+                }
+                
+                html += '</div></div>';
+            }
+            
+            html += '</div>';
+            document.getElementById('calendar-content').innerHTML = html;
         }
         
-        function openEventModal(eventId) {
+        function switchViewType(type) {
+            currentViewType = type;
+            
+            document.querySelectorAll('.view-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-view="${type}"]`).classList.add('active');
+            
+            renderStats();
+            renderCalendar();
+        }
+        
+        function previousPeriod() {
+            const viewMode = document.getElementById('view-mode').value;
+            if (viewMode === 'month') {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+            } else {
+                currentDate.setFullYear(currentDate.getFullYear() - 1);
+            }
+            renderCalendar();
+        }
+        
+        function nextPeriod() {
+            const viewMode = document.getElementById('view-mode').value;
+            if (viewMode === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            } else {
+                currentDate.setFullYear(currentDate.getFullYear() + 1);
+            }
+            renderCalendar();
+        }
+        
+        function goToToday() {
+            currentDate = new Date();
+            document.getElementById('view-mode').value = 'month';
+            renderCalendar();
+        }
+        
+        function jumpToDate(dateStr) {
+            currentDate = new Date(dateStr);
+            document.getElementById('view-mode').value = 'month';
+            renderCalendar();
+        }
+        
+        function openEventDetails(eventId) {
             window.open(`/api/event-details/${eventId}`, '_blank', 'width=900,height=700');
         }
         
-        // Event listeners
-        document.getElementById('month-filter').addEventListener('change', renderGanttChart);
-        document.getElementById('view-mode').addEventListener('change', renderGanttChart);
-        document.getElementById('conflict-filter').addEventListener('change', renderGanttChart);
-        
-        // Cargar datos al inicio
+        // Inicializar
         loadData();
     </script>
 </body>
