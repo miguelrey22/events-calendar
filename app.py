@@ -767,7 +767,7 @@ def api_timeline_data():
             'success': True,
             'events': events_json,
             'conflicts': cached_dashboard_data['conflicts'],
-            'employee_timelines': cached_dashboard_data.get('employee_timelines', {})
+            'employee_timelines': cached_dashboard_data.get('employee_timelines', {}),
             'color_mapping': calendar_instance.color_mapping  # ✅ AÑADIR ESTA LÍNEA
         })
         
