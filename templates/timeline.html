@@ -189,6 +189,11 @@
             min-height: 120px;
             padding: 8px;
             position: relative;
+            cursor: pointer;
+        }
+        
+        .day-cell:hover {
+            background: #fafafa;
         }
         
         .day-cell.other-month {
@@ -261,6 +266,230 @@
             align-items: center;
             justify-content: center;
             font-size: 10px;
+        }
+        
+        .more-events {
+            font-size: 10px;
+            color: #86868b;
+            margin-top: 4px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .more-events:hover {
+            color: #007aff;
+        }
+        
+        /* MODAL DE DÍA */
+        .day-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.2s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .day-modal-content {
+            background: white;
+            margin: 5% auto;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.3s;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .day-modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .day-modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+        
+        .day-modal-body {
+            padding: 30px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .modal-event-item {
+            background: #f5f5f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .modal-event-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .modal-event-name {
+            font-weight: 700;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+            color: #1d1d1f;
+        }
+        
+        .modal-event-details {
+            font-size: 0.9em;
+            color: #86868b;
+            margin-top: 5px;
+        }
+        
+        .modal-event-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-top: 8px;
+            margin-right: 5px;
+        }
+        
+        /* MODAL DE EVENTO DETALLADO */
+        .event-detail-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .event-detail-content {
+            background: white;
+            margin: 2% auto;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .event-detail-header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .event-detail-body {
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .detail-section {
+            margin-bottom: 25px;
+        }
+        
+        .detail-section h3 {
+            color: #1d1d1f;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .detail-item {
+            background: #f5f5f7;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .detail-label {
+            font-size: 0.85em;
+            color: #86868b;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .staff-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .staff-item {
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .staff-item.conflict {
+            background: #ffebee;
+            border-left-color: #e74c3c;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #86868b;
         }
         
         /* VISTA ANUAL */
@@ -338,15 +567,6 @@
             color: #d1d1d6;
         }
         
-        .event-dot {
-            position: absolute;
-            bottom: 2px;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #007aff;
-        }
-        
         .stats-summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -378,7 +598,6 @@
             color: #ff3b30;
         }
         
-        /* LEYENDA */
         .legend {
             background: white;
             padding: 20px;
@@ -414,17 +633,6 @@
         .legend-text {
             font-size: 13px;
             color: #1d1d1f;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-            color: #86868b;
-        }
-        
-        .empty-state h3 {
-            font-size: 20px;
-            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -482,14 +690,35 @@
         <div class="legend" id="legend"></div>
     </div>
 
+    <!-- MODAL DE DÍA -->
+    <div id="day-modal" class="day-modal">
+        <div class="day-modal-content">
+            <div class="day-modal-header">
+                <h2 id="day-modal-title">Loading...</h2>
+                <button class="modal-close" onclick="closeDayModal()">&times;</button>
+            </div>
+            <div class="day-modal-body" id="day-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE EVENTO DETALLADO -->
+    <div id="event-detail-modal" class="event-detail-modal">
+        <div class="event-detail-content">
+            <div class="event-detail-header">
+                <h2 id="event-detail-title">Loading...</h2>
+                <button class="modal-close" onclick="closeEventDetailModal()">&times;</button>
+            </div>
+            <div class="event-detail-body" id="event-detail-body"></div>
+        </div>
+    </div>
+
     <script>
         let eventsData = [];
         let conflictsData = [];
         let currentDate = new Date();
-        let currentViewType = 'events'; // 'events' or 'employees'
+        let currentViewType = 'events';
         let colorMapping = {};
         
-        // Cargar datos
         async function loadData() {
             try {
                 const response = await fetch('/api/timeline-data');
@@ -625,7 +854,6 @@
                 currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             
             const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             
@@ -654,7 +882,7 @@
                 if (!isCurrentMonth) cellClass += ' other-month';
                 if (isToday) cellClass += ' today';
                 
-                html += `<div class="${cellClass}">`;
+                html += `<div class="${cellClass}" onclick="openDayModal('${dateStr}')">`;
                 html += `<div class="day-number">${date.getDate()}</div>`;
                 
                 // Filtrar eventos para este día
@@ -665,33 +893,31 @@
                 });
                 
                 if (currentViewType === 'events') {
-                    // Filtrar por conflictos
                     if (conflictFilter === 'conflicts') {
                         dayEvents = dayEvents.filter(e => e.needs_attention);
                     } else if (conflictFilter === 'no-conflicts') {
                         dayEvents = dayEvents.filter(e => !e.needs_attention);
                     }
                     
-                    // Mostrar eventos (máximo 4)
-                    dayEvents.slice(0, 4).forEach(event => {
+                    // ✅ MOSTRAR EVENTOS TODOS LOS DÍAS (máximo 3)
+                    dayEvents.slice(0, 3).forEach(event => {
                         const isFirstDay = dateStr === event.from_date;
                         const hasConflict = event.needs_attention;
+                        const displayText = isFirstDay ? event.event_name : event.city;
                         
-                        if (isFirstDay) {
-                            html += `
-                                <div class="event-bar ${hasConflict ? 'conflict' : ''}" 
-                                     style="background: ${event.color}; color: white;"
-                                     onclick="openEventDetails('${event.event_id}')"
-                                     title="${event.event_name}">
-                                    ${event.event_name}
-                                    ${hasConflict ? '<span class="conflict-badge">!</span>' : ''}
-                                </div>
-                            `;
-                        }
+                        html += `
+                            <div class="event-bar ${hasConflict ? 'conflict' : ''}" 
+                                 style="background: ${event.color}; color: white;"
+                                 onclick="event.stopPropagation(); openEventDetailModal('${event.event_id}')"
+                                 title="${event.event_name}">
+                                ${displayText}
+                                ${hasConflict ? '<span class="conflict-badge">!</span>' : ''}
+                            </div>
+                        `;
                     });
                     
-                    if (dayEvents.length > 4) {
-                        html += `<div style="font-size: 10px; color: #86868b; margin-top: 4px;">+${dayEvents.length - 4} more</div>`;
+                    if (dayEvents.length > 3) {
+                        html += `<div class="more-events">+${dayEvents.length - 3} more</div>`;
                     }
                 } else {
                     // Vista de empleados
@@ -703,7 +929,6 @@
                             if (dateStr >= res.from_date && dateStr <= res.to_date) {
                                 employees.add(res.employee);
                                 
-                                // Verificar si este empleado tiene conflicto este día
                                 const hasConflict = conflictsData.some(c => 
                                     c.employee === res.employee &&
                                     dateStr >= c.overlap_start.split('/').reverse().join('-') &&
@@ -717,7 +942,6 @@
                         });
                     });
                     
-                    // Filtrar por conflictos
                     let displayEmployees = Array.from(employees);
                     if (conflictFilter === 'conflicts') {
                         displayEmployees = displayEmployees.filter(e => employeeConflicts.has(e));
@@ -725,7 +949,7 @@
                         displayEmployees = displayEmployees.filter(e => !employeeConflicts.has(e));
                     }
                     
-                    displayEmployees.slice(0, 4).forEach(empName => {
+                    displayEmployees.slice(0, 3).forEach(empName => {
                         const hasConflict = employeeConflicts.has(empName);
                         const color = hasConflict ? '#ff3b30' : '#34c759';
                         
@@ -739,8 +963,8 @@
                         `;
                     });
                     
-                    if (displayEmployees.length > 4) {
-                        html += `<div style="font-size: 10px; color: #86868b; margin-top: 4px;">+${displayEmployees.length - 4} more</div>`;
+                    if (displayEmployees.length > 3) {
+                        html += `<div class="more-events">+${displayEmployees.length - 3} more</div>`;
                     }
                 }
                 
@@ -770,7 +994,6 @@
                 html += '</div><div class="mini-days">';
                 
                 const firstDay = new Date(year, month, 1);
-                const lastDay = new Date(year, month + 1, 0);
                 const startDate = new Date(firstDay);
                 startDate.setDate(startDate.getDate() - firstDay.getDay());
                 
@@ -805,9 +1028,6 @@
                     
                     html += `<div class="${cellClass}" onclick="jumpToDate('${dateStr}')">`;
                     html += date.getDate();
-                    if (dayEvents.length > 0 && !isToday) {
-                        html += '<div class="event-dot"></div>';
-                    }
                     html += '</div>';
                 }
                 
@@ -816,6 +1036,151 @@
             
             html += '</div>';
             document.getElementById('calendar-content').innerHTML = html;
+        }
+        
+        // MODAL DE DÍA
+        function openDayModal(dateStr) {
+            const date = new Date(dateStr);
+            const dayEvents = eventsData.filter(event => 
+                dateStr >= event.from_date && dateStr <= event.to_date
+            );
+            
+            document.getElementById('day-modal-title').textContent = 
+                date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            let html = '';
+            
+            if (dayEvents.length === 0) {
+                html = '<div class="empty-state"><h3>No events this day</h3></div>';
+            } else {
+                dayEvents.forEach(event => {
+                    const isFirstDay = dateStr === event.from_date;
+                    const isLastDay = dateStr === event.to_date;
+                    let badge = '';
+                    if (isFirstDay) badge = '🟢 Start';
+                    else if (isLastDay) badge = '🔴 End';
+                    else badge = '🔵 Ongoing';
+                    
+                    html += `
+                        <div class="modal-event-item" style="border-left-color: ${event.color};" 
+                             onclick="openEventDetailModal('${event.event_id}')">
+                            <div class="modal-event-name">${event.event_name}</div>
+                            <div class="modal-event-details">
+                                📍 ${event.city} | ${event.set_name}
+                            </div>
+                            <div class="modal-event-details">
+                                📅 ${event.from_date} → ${event.to_date}
+                            </div>
+                            <div>
+                                <span class="modal-event-badge" style="background: ${event.color}; color: white;">
+                                    ${badge}
+                                </span>
+                                ${event.employees_count > 0 ? 
+                                    `<span class="modal-event-badge" style="background: #e8f5e9; color: #27ae60;">
+                                        👥 ${event.employees_count}
+                                    </span>` : ''}
+                                ${event.needs_attention ? 
+                                    `<span class="modal-event-badge" style="background: #ffebee; color: #e74c3c;">
+                                        ⚠️ No Staff
+                                    </span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('day-modal-body').innerHTML = html;
+            document.getElementById('day-modal').style.display = 'block';
+        }
+        
+        function closeDayModal() {
+            document.getElementById('day-modal').style.display = 'none';
+        }
+        
+        // MODAL DE EVENTO DETALLADO
+        async function openEventDetailModal(eventId) {
+            document.getElementById('event-detail-modal').style.display = 'block';
+            document.getElementById('event-detail-title').textContent = 'Loading...';
+            document.getElementById('event-detail-body').innerHTML = '<div style="text-align:center; padding:40px;">Loading...</div>';
+            
+            try {
+                const response = await fetch(`/api/event-details/${eventId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderEventDetail(data);
+                } else {
+                    document.getElementById('event-detail-body').innerHTML = 
+                        `<div class="empty-state"><h3>❌ ${data.error}</h3></div>`;
+                }
+            } catch (error) {
+                document.getElementById('event-detail-body').innerHTML = 
+                    `<div class="empty-state"><h3>❌ Error loading event</h3></div>`;
+            }
+        }
+        
+        function renderEventDetail(data) {
+            const event = data.event;
+            const staff = data.staff;
+            
+            document.getElementById('event-detail-title').textContent = event.event_name;
+            
+            let html = `
+                <div class="detail-section">
+                    <h3>📋 Event Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">📅 Dates</div>
+                            <div class="detail-value">${event.from_date} → ${event.to_date}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">⏱️ Duration</div>
+                            <div class="detail-value">${event.duration_days} day${event.duration_days > 1 ? 's' : ''}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">📍 Location</div>
+                            <div class="detail-value">${event.city}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">🏆 SET</div>
+                            <div class="detail-value">
+                                <span style="display:inline-block; width:12px; height:12px; background:${event.color}; border-radius:50%; margin-right:5px;"></span>
+                                ${event.set_name}
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">👤 Coordinator</div>
+                            <div class="detail-value">${event.coordinator}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>👥 Staff (${staff.length})</h3>
+                    ${staff.length > 0 ? `
+                        <div class="staff-list">
+                            ${staff.map(person => `
+                                <div class="staff-item ${person.has_conflict ? 'conflict' : ''}">
+                                    <div style="font-weight:600;">
+                                        ${person.name} 
+                                        ${person.has_conflict ? '⚠️ CONFLICT' : '✅'}
+                                        ${person.remote ? '🏠 Remote' : ''}
+                                    </div>
+                                    <div style="font-size:0.9em; color:#86868b; margin-top:5px;">
+                                        ${person.from_date} → ${person.to_date}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<div style="text-align:center; padding:20px; color:#86868b;">No staff assigned</div>'}
+                </div>
+            `;
+            
+            document.getElementById('event-detail-body').innerHTML = html;
+        }
+        
+        function closeEventDetailModal() {
+            document.getElementById('event-detail-modal').style.display = 'none';
         }
         
         function switchViewType(type) {
@@ -862,11 +1227,11 @@
             renderCalendar();
         }
         
-        function openEventDetails(eventId) {
-            window.open(`/api/event-details/${eventId}`, '_blank', 'width=900,height=700');
+        window.onclick = function(event) {
+            if (event.target.id === 'day-modal') closeDayModal();
+            if (event.target.id === 'event-detail-modal') closeEventDetailModal();
         }
         
-        // Inicializar
         loadData();
     </script>
 </body>
