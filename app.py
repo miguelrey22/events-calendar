@@ -768,6 +768,7 @@ def api_timeline_data():
             'events': events_json,
             'conflicts': cached_dashboard_data['conflicts'],
             'employee_timelines': cached_dashboard_data.get('employee_timelines', {})
+            'color_mapping': calendar_instance.color_mapping  # ✅ AÑADIR ESTA LÍNEA
         })
         
     except Exception as e:
