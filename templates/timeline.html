@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline Gantt - Events Calendar AKS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 { font-size: 2em; margin-bottom: 5px; }
+        
+        .timeline-container {
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .gantt-wrapper {
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+        }
+        
+        .gantt-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .gantt-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 8px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 600;
+            border-right: 1px solid rgba(255,255,255,0.2);
+            white-space: nowrap;
+        }
+        
+        .gantt-table th.date-col {
+            width: 90px;
+            background: #34495e;
+        }
+        
+        .gantt-table th.week-col {
+            width: 70px;
+            background: #34495e;
+        }
+        
+        .gantt-table th.set-col {
+            min-width: 100px;
+            background: #3498db;
+        }
+        
+        .gantt-table th.employee-col {
+            min-width: 120px;
+            background: #27ae60;
+        }
+        
+        .gantt-table td {
+            padding: 4px 8px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+            height: 35px;
+            position: relative;
+        }
+        
+        .gantt-table td.date-cell {
+            background: #f8f9fa;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 12px;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            border-right: 2px solid #dee2e6;
+        }
+        
+        .gantt-table td.week-cell {
+            background: #fff3cd;
+            font-weight: bold;
+            color: #856404;
+            position: sticky;
+            left: 90px;
+            z-index: 5;
+            border-right: 2px solid #dee2e6;
+        }
+        
+        .gantt-table tr:nth-child(even) td.date-cell {
+            background: #e9ecef;
+        }
+        
+        .event-cell {
+            font-weight: 600;
+            font-size: 10px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 6px 4px;
+        }
+        
+        .event-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        
+        .employee-cell {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            font-weight: 600;
+            color: #155724;
+        }
+        
+        .employee-cell.conflict {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+        
+        .employee-cell.travel {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .legend {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            border-top: 2px solid #dee2e6;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stats-bar {
+            padding: 15px 20px;
+            background: #e3f2fd;
+            border-top: 2px solid #90caf9;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #555;
+        }
+        
+        .empty-cell {
+            background: white;
+        }
+        
+        .today-row {
+            background: #fff3cd !important;
+        }
+        
+        .weekend-row td.date-cell {
+            background: #ffe5b4 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📅 Timeline Gantt - Calendar 2025</h1>
+        <p>Vista cronológica de eventos y personal</p>
+    </div>
+    
+    <div class="timeline-container">
+        <div class="controls">
+            <div class="control-group">
+                <label>📅 Mes</label>
+                <select id="month-filter">
+                    <option value="">Todos los meses</option>
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10" selected>Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>🎯 Vista</label>
+                <select id="view-mode">
+                    <option value="all">Todos (Eventos + Personal)</option>
+                    <option value="events">Solo Eventos</option>
+                    <option value="employees">Solo Personal</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>⚠️ Filtro Conflictos</label>
+                <select id="conflict-filter">
+                    <option value="all">Todos</option>
+                    <option value="conflicts">Solo Conflictos</option>
+                    <option value="no-conflicts">Sin Conflictos</option>
+                </select>
+            </div>
+            
+            <button onclick="location.href='/'" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                ← Volver al Dashboard
+            </button>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="total-events">0</div>
+                <div class="stat-label">Eventos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-assignments">0</div>
+                <div class="stat-label">Asignaciones</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-conflicts">0</div>
+                <div class="stat-label">Conflictos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="active-employees">0</div>
+                <div class="stat-label">Empleados Activos</div>
+            </div>
+        </div>
+        
+        <div class="gantt-wrapper">
+            <table class="gantt-table" id="gantt-table">
+                <thead id="table-header"></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FF6B6B;"></div>
+                <span>SET 1 (WEC/FIA)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4ECDC4;"></div>
+                <span>SET 2</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #45B7D1;"></div>
+                <span>SET 3</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #27AE60;"></div>
+                <span>SET 5 (ELMS)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d4edda;"></div>
+                <span>✅ Asignado</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f8d7da;"></div>
+                <span>⚠️ Conflicto</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d1ecf1;"></div>
+                <span>✈️ Viaje</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let eventsData = [];
+        let conflictsData = [];
+        let employeesTimeline = {};
+        
+        // Cargar datos del dashboard
+        async function loadData() {
+            try {
+                const response = await fetch('/api/timeline-data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    eventsData = data.events;
+                    conflictsData = data.conflicts;
+                    employeesTimeline = data.employee_timelines || {};
+                    
+                    updateStats();
+                    renderGanttChart();
+                }
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                alert('Error cargando datos del timeline');
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('total-events').textContent = eventsData.length;
+            document.getElementById('total-conflicts').textContent = conflictsData.length;
+            
+            let totalAssignments = 0;
+            let activeEmployees = new Set();
+            
+            eventsData.forEach(event => {
+                totalAssignments += event.reservations.length;
+                event.reservations.forEach(res => {
+                    activeEmployees.add(res.employee);
+                });
+            });
+            
+            document.getElementById('total-assignments').textContent = totalAssignments;
+            document.getElementById('active-employees').textContent = activeEmployees.size;
+        }
+        
+        function renderGanttChart() {
+            const monthFilter = document.getElementById('month-filter').value;
+            const viewMode = document.getElementById('view-mode').value;
+            const conflictFilter = document.getElementById('conflict-filter').value;
+            
+            // Filtrar eventos por mes
+            let filteredEvents = eventsData;
+            if (monthFilter) {
+                filteredEvents = eventsData.filter(event => {
+                    const eventMonth = event.from_date.split('-')[1];
+                    return eventMonth === monthFilter;
+                });
+            }
+            
+            // Obtener rango de fechas
+            if (filteredEvents.length === 0) {
+                document.getElementById('table-body').innerHTML = '<tr><td colspan="20" style="text-align:center; padding:40px;">No hay eventos en este período</td></tr>';
+                return;
+            }
+            
+            const startDate = new Date(Math.min(...filteredEvents.map(e => new Date(e.from_date))));
+            const endDate = new Date(Math.max(...filteredEvents.map(e => new Date(e.to_date))));
+            
+            // Generar todas las fechas en el rango
+            const dates = [];
+            const currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                dates.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            // Obtener todos los SETs únicos
+            const sets = [...new Set(filteredEvents.map(e => e.set_name))].sort();
+            
+            // Obtener todos los empleados únicos
+            const employees = [...new Set(filteredEvents.flatMap(e => 
+                e.reservations.map(r => r.employee)
+            ))].sort();
+            
+            // Crear empleados con información de conflictos
+            const employeesWithConflicts = employees.map(empName => {
+                const hasConflict = conflictsData.some(c => c.employee === empName);
+                const conflictCount = conflictsData.filter(c => c.employee === empName).length;
+                return { name: empName, hasConflict, conflictCount };
+            });
+            
+            // Filtrar empleados según filtro de conflictos
+            let displayEmployees = employeesWithConflicts;
+            if (conflictFilter === 'conflicts') {
+                displayEmployees = employeesWithConflicts.filter(e => e.hasConflict);
+            } else if (conflictFilter === 'no-conflicts') {
+                displayEmployees = employeesWithConflicts.filter(e => !e.hasConflict);
+            }
+            
+            // Renderizar headers
+            let headerHTML = '<tr>';
+            headerHTML += '<th class="date-col">📅 FECHA</th>';
+            headerHTML += '<th class="week-col">📆 SEMANA</th>';
+            
+            if (viewMode === 'all' || viewMode === 'events') {
+                sets.forEach(set => {
+                    headerHTML += `<th class="set-col">${set}</th>`;
+                });
+            }
+            
+            if (viewMode === 'all' || viewMode === 'employees') {
+                displayEmployees.forEach(emp => {
+                    const conflictBadge = emp.hasConflict ? ' ⚠️' : '';
+                    headerHTML += `<th class="employee-col">${emp.name}${conflictBadge}</th>`;
+                });
+            }
+            
+            headerHTML += '</tr>';
+            document.getElementById('table-header').innerHTML = headerHTML;
+            
+            // Renderizar filas
+            let bodyHTML = '';
+            dates.forEach((date, dateIdx) => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayNum = date.getDate();
+                const monthNum = date.getMonth() + 1;
+                const weekNum = getWeekNumber(date);
+                const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()];
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                const isToday = dateStr === new Date().toISOString().split('T')[0];
+                
+                const rowClass = isToday ? 'today-row' : (isWeekend ? 'weekend-row' : '');
+                
+                bodyHTML += `<tr class="${rowClass}">`;
+                bodyHTML += `<td class="date-cell">${dayName} ${dayNum}/${monthNum}</td>`;
+                bodyHTML += `<td class="week-cell">${weekNum % 2 === 0 ? 'W'+weekNum : ''}</td>`;
+                
+                // Columnas de eventos
+                if (viewMode === 'all' || viewMode === 'events') {
+                    sets.forEach(set => {
+                        const eventsInSetOnDate = filteredEvents.filter(event => {
+                            return event.set_name === set && 
+                                   dateStr >= event.from_date && 
+                                   dateStr <= event.to_date;
+                        });
+                        
+                        if (eventsInSetOnDate.length > 0) {
+                            const event = eventsInSetOnDate[0];
+                            const isFirstDay = dateStr === event.from_date;
+                            const eventText = isFirstDay ? event.city : '';
+                            bodyHTML += `<td class="event-cell" style="background: ${event.color};" onclick="openEventModal('${event.event_id}')" title="${event.event_name}">${eventText}</td>`;
+                        } else {
+                            bodyHTML += `<td class="empty-cell"></td>`;
+                        }
+                    });
+                }
+                
+                // Columnas de empleados
+                if (viewMode === 'all' || viewMode === 'employees') {
+                    displayEmployees.forEach(emp => {
+                        const assignmentsOnDate = filteredEvents.filter(event => {
+                            return event.reservations.some(r => 
+                                r.employee === emp.name && 
+                                dateStr >= r.from_date && 
+                                dateStr <= r.to_date
+                            );
+                        });
+                        
+                        if (assignmentsOnDate.length > 0) {
+                            const event = assignmentsOnDate[0];
+                            const reservation = event.reservations.find(r => r.employee === emp.name);
+                            const isFirstDay = dateStr === reservation.from_date;
+                            
+                            const hasConflict = assignmentsOnDate.length > 1;
+                            const hasTravel = reservation.has_travel_connection;
+                            
+                            let cellClass = 'employee-cell';
+                            if (hasConflict) cellClass += ' conflict';
+                            else if (hasTravel) cellClass += ' travel';
+                            
+                            const eventText = isFirstDay ? event.city : '';
+                            const conflictIcon = hasConflict ? '⚠️' : '';
+                            const travelIcon = hasTravel ? '✈️' : '';
+                            
+                            bodyHTML += `<td class="${cellClass}" onclick="openEventModal('${event.event_id}')" title="${event.event_name}">
+                                ${conflictIcon}${travelIcon}${eventText}
+                            </td>`;
+                        } else {
+                            bodyHTML += `<td class="empty-cell"></td>`;
+                        }
+                    });
+                }
+                
+                bodyHTML += '</tr>';
+            });
+            
+            document.getElementById('table-body').innerHTML = bodyHTML;
+        }
+        
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        }
+        
+        function openEventModal(eventId) {
+            window.open(`/api/event-details/${eventId}`, '_blank', 'width=900,height=700');
+        }
+        
+        // Event listeners
+        document.getElementById('month-filter').addEventListener('change', renderGanttChart);
+        document.getElementById('view-mode').addEventListener('change', renderGanttChart);
+        document.getElementById('conflict-filter').addEventListener('change', renderGanttChart);
+        
+        // Cargar datos al inicio
+        loadData();
+    </script>
+</body>
+</html>

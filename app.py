@@ -726,7 +726,53 @@ def api_available_staff():
         },
         'staff': available
     })
+@app.route('/timeline')
+def timeline():
+    """Vista Timeline estilo Gantt"""
+    global calendar_instance
+    
+    if not calendar_instance:
+        return render_template('config_needed.html')
+    
+    return render_template('timeline.html')
 
+@app.route('/api/timeline-data')
+def api_timeline_data():
+    """API para obtener datos del timeline"""
+    global calendar_instance, cached_dashboard_data
+    
+    if not calendar_instance or not cached_dashboard_data:
+        return jsonify({'error': 'Sistema no configurado'}), 400
+    
+    try:
+        # Convertir fechas a string para JSON
+        events_json = []
+        for event in cached_dashboard_data['events']:
+            event_copy = event.copy()
+            event_copy['from_date'] = event['from_date'].strftime('%Y-%m-%d')
+            event_copy['to_date'] = event['to_date'].strftime('%Y-%m-%d')
+            
+            # Convertir fechas de reservations
+            reservations_json = []
+            for res in event['reservations']:
+                res_copy = res.copy()
+                res_copy['from_date'] = res['from_date'].strftime('%Y-%m-%d')
+                res_copy['to_date'] = res['to_date'].strftime('%Y-%m-%d')
+                reservations_json.append(res_copy)
+            
+            event_copy['reservations'] = reservations_json
+            events_json.append(event_copy)
+        
+        return jsonify({
+            'success': True,
+            'events': events_json,
+            'conflicts': cached_dashboard_data['conflicts'],
+            'employee_timelines': cached_dashboard_data.get('employee_timelines', {})
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en timeline data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 @app.route('/api/event-details/<event_id>')
 def api_event_details(event_id):
     """API para obtener detalles completos de un evento"""

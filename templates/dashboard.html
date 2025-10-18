@@ -563,13 +563,12 @@
         </p>
     </div>
     
-    <div class="tabs-container">
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab(0)">📅 Calendario</button>
-            <button class="tab" onclick="switchTab(1)">📋 Timeline</button>
-            <button class="tab" onclick="switchTab(2)">👥 Trabajadores</button>
-            <button class="tab" onclick="switchTab(3)">🔍 Buscar Disponibles</button>
-        </div>
+<div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">📅 Calendario</button>
+    <button class="tab" onclick="location.href='/timeline'" style="background: linear-gradient(45deg, #e67e22, #d35400); color: white; font-weight: 700;">📊 TIMELINE GANTT</button>
+    <button class="tab" onclick="switchTab(2)">👥 Trabajadores</button>
+    <button class="tab" onclick="switchTab(3)">🔍 Buscar Disponibles</button>
+</div>
         
         <!-- PESTAÑA 1: CALENDARIO -->
         <div class="tab-content active">
