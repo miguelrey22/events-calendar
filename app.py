@@ -2,7 +2,7 @@
 Events Calendar AKS - Al Kamel Management
 Sistema Completo de Gestión Visual de Eventos
 
-Versión: 3.2 - CORREGIDO: Muestra TODOS los trabajadores
+Versión: 3.3 - CORREGIDO: Usa PEOPLE RESERVED para mostrar todos los empleados
 Autor: Claude AI para Alkamel Management
 Fecha: 18/10/2025
 """
@@ -409,15 +409,21 @@ class EventsCalendarAKS:
         return available_staff
     
     def process_motorsport_data(self) -> Dict:
-        """Procesar datos completos"""
+        """Procesar datos completos - CORREGIDO: usa PEOPLE RESERVED"""
         logger.info("🔄 Procesando datos...")
         
         events_data = self.get_airtable_data('EVENTS')
         reservations_data = self.get_airtable_data('EVENTS RESERVATIONS')
+        employees_data = self.get_airtable_data('Employee directory')
         
         if not events_data:
             logger.error("❌ No se encontraron eventos")
             return {}
+        
+        # Crear diccionario de empleados por ID
+        employees_by_id = {}
+        for emp in employees_data:
+            employees_by_id[emp['id']] = emp.get('fields', {}).get('Name', 'Sin nombre')
         
         start_date = datetime.now().date()
         end_date = start_date + timedelta(days=365)
@@ -457,35 +463,56 @@ class EventsCalendarAKS:
             confirmed = fields.get('CONFIRMED', False)
             coordinator = fields.get('Name (from Event Coordinator)', [''])[0] if fields.get('Name (from Event Coordinator)') else 'Sin coordinador'
             
-            # CORRECCIÓN CRÍTICA: Verificar si event_id está EN el array EVENT
+            # ✅ CAMBIO PRINCIPAL: Usar PEOPLE RESERVED en lugar de solo EVENTS RESERVATIONS
+            people_reserved_ids = fields.get('PEOPLE RESERVED', [])
+            
             event_reservations = []
-            for res_record in reservations_data:
-                res_fields = res_record.get('fields', {})
-                event_links = res_fields.get('EVENT', [])
+            
+            # Obtener datos de CADA empleado asignado
+            for emp_id in people_reserved_ids:
+                emp_name = employees_by_id.get(emp_id, 'Sin nombre')
                 
-                # CORREGIDO: Verificar si el event_id está dentro del array
-                if event_record['id'] in event_links:
-                    if 'FROM' in res_fields and 'TO' in res_fields:
-                        try:
-                            res_start = datetime.strptime(res_fields['FROM'], '%Y-%m-%d').date()
-                            res_end = datetime.strptime(res_fields['TO'], '%Y-%m-%d').date()
-                            
-                            employee_name = res_fields.get('Name (from Employee directory)', ['Sin asignar'])[0] if res_fields.get('Name (from Employee directory)') else 'Sin asignar'
-                            is_remote = res_fields.get('REMOTE', False)
-                            
-                            event_reservations.append({
-                                'employee': employee_name,
-                                'from_date': res_start,
-                                'to_date': res_end,
-                                'remote': is_remote,
-                                'days': (res_end - res_start).days + 1
-                            })
-                            
-                            if is_remote:
-                                stats['remote_assignments'] += 1
-                        except Exception as e:
-                            logger.debug(f"Error procesando reservation: {str(e)}")
-                            continue
+                # Buscar si tiene reservation con fechas específicas
+                emp_reservation = None
+                for res_record in reservations_data:
+                    res_fields = res_record.get('fields', {})
+                    event_links = res_fields.get('EVENT', [])
+                    emp_links = res_fields.get('Employee directory', [])
+                    
+                    if event_record['id'] in event_links and emp_id in emp_links:
+                        if 'FROM' in res_fields and 'TO' in res_fields:
+                            try:
+                                res_start = datetime.strptime(res_fields['FROM'], '%Y-%m-%d').date()
+                                res_end = datetime.strptime(res_fields['TO'], '%Y-%m-%d').date()
+                                is_remote = res_fields.get('REMOTE', False)
+                                
+                                emp_reservation = {
+                                    'employee': emp_name,
+                                    'from_date': res_start,
+                                    'to_date': res_end,
+                                    'remote': is_remote,
+                                    'days': (res_end - res_start).days + 1
+                                }
+                                
+                                if is_remote:
+                                    stats['remote_assignments'] += 1
+                                
+                                break
+                            except:
+                                continue
+                
+                # Si tiene reservation específica, usarla; si no, usar fechas del evento
+                if emp_reservation:
+                    event_reservations.append(emp_reservation)
+                else:
+                    # Empleado asignado pero sin reservation específica
+                    event_reservations.append({
+                        'employee': emp_name,
+                        'from_date': event_start,
+                        'to_date': event_end,
+                        'remote': False,
+                        'days': (event_end - event_start).days + 1
+                    })
             
             week_num = event_start.isocalendar()[1]
             month_key = event_start.strftime('%Y-%m')
