@@ -2,9 +2,9 @@
 Events Calendar AKS - Al Kamel Management
 Sistema Completo de Gestión Visual de Eventos
 
-Versión: 3.1 - Con detección de conexiones de viaje
+Versión: 3.2 - CORREGIDO: Muestra TODOS los trabajadores
 Autor: Claude AI para Alkamel Management
-Fecha: 11/10/2025
+Fecha: 18/10/2025
 """
 
 import os
@@ -193,7 +193,7 @@ class EventsCalendarAKS:
             return []
     
     def detect_conflicts(self, events: List[Dict]) -> Tuple[List[Dict], Dict]:
-        """Detectar conflictos de personal"""
+        """Detectar conflictos de personal con detalles completos"""
         conflicts = []
         employee_timelines = defaultdict(list)
         
@@ -205,7 +205,8 @@ class EventsCalendarAKS:
                     'event_id': event['event_id'],
                     'from': reservation['from_date'],
                     'to': reservation['to_date'],
-                    'city': event['city']
+                    'city': event['city'],
+                    'set': event['set_name']
                 })
         
         conflict_details = {}
@@ -217,16 +218,24 @@ class EventsCalendarAKS:
                     event1 = timeline[i]
                     event2 = timeline[j]
                     
+                    # Verificar solapamiento
                     if event1['to'] >= event2['from']:
                         conflict_key = f"{employee}_{event1['event_id']}_{event2['event_id']}"
                         if conflict_key not in conflict_details:
                             conflicts.append({
                                 'employee': employee,
                                 'event1': event1['event'],
+                                'event1_id': event1['event_id'],
                                 'event2': event2['event'],
+                                'event2_id': event2['event_id'],
                                 'city1': event1['city'],
                                 'city2': event2['city'],
-                                'dates': f"{event1['from'].strftime('%d/%m')} - {event2['to'].strftime('%d/%m')}"
+                                'set1': event1['set'],
+                                'set2': event2['set'],
+                                'overlap_start': event2['from'].strftime('%d/%m/%Y'),
+                                'overlap_end': min(event1['to'], event2['to']).strftime('%d/%m/%Y'),
+                                'event1_dates': f"{event1['from'].strftime('%d/%m')} - {event1['to'].strftime('%d/%m')}",
+                                'event2_dates': f"{event2['from'].strftime('%d/%m')} - {event2['to'].strftime('%d/%m')}"
                             })
                             conflict_details[conflict_key] = True
         
@@ -234,12 +243,8 @@ class EventsCalendarAKS:
         return conflicts, employee_timelines
     
     def detect_travel_connections(self, events: List[Dict]) -> Dict:
-        """
-        Detectar qué personal viene de un evento la semana anterior o va a otro la semana siguiente
-        """
+        """Detectar qué personal viene de un evento la semana anterior o va a otro la semana siguiente"""
         travel_connections = {}
-        
-        # Crear diccionario de eventos por empleado
         employee_events = defaultdict(list)
         
         for event in events:
@@ -253,7 +258,6 @@ class EventsCalendarAKS:
                     'city': event['city']
                 })
         
-        # Para cada evento, detectar conexiones de viaje
         for event in events:
             event_connections = {
                 'people_with_travel': [],
@@ -266,9 +270,7 @@ class EventsCalendarAKS:
                 current_event_start = event['from_date']
                 current_event_end = event['to_date']
                 
-                # Buscar eventos del mismo empleado
                 emp_events = employee_events[employee_name]
-                
                 has_connection = False
                 
                 for other_event in emp_events:
@@ -311,12 +313,6 @@ class EventsCalendarAKS:
         employees_data = self.get_airtable_data('Employee directory')
         reservations_data = self.get_airtable_data('EVENTS RESERVATIONS')
         
-        # Emails genéricos a excluir (no son personas físicas)
-        generic_emails = [
-            'info@', 'admin@', 'operations@', 'contact@', 'support@',
-            'hello@', 'office@', 'general@', 'staff@', 'team@'
-        ]
-        
         # Nombres falsos/placeholders a excluir
         fake_names = [
             'airtable.user1', 
@@ -337,26 +333,23 @@ class EventsCalendarAKS:
             emp_email = emp_fields.get('EMAIL', '')
             emp_role = emp_fields.get('POSITION', '')
             
-            # FILTRO 1: Excluir CUALQUIER nombre que contenga @ (es un email, no una persona)
+            # FILTRO 1: Excluir nombres que contienen @
             if '@' in emp_name:
-                logger.debug(f"Excluido email como nombre: {emp_name}")
                 continue
             
             # FILTRO 2: Excluir nombres falsos/placeholders
             emp_name_lower = emp_name.lower().strip()
             if any(fake_name in emp_name_lower for fake_name in fake_names):
-                logger.debug(f"Excluido nombre falso/placeholder: {emp_name}")
+                logger.debug(f"Excluido nombre falso: {emp_name}")
                 continue
             
-            # FILTRO 3: Excluir si el nombre es demasiado corto (probablemente no es persona real)
+            # FILTRO 3: Excluir nombres muy cortos
             if len(emp_name.strip()) < 3:
-                logger.debug(f"Excluido nombre muy corto: {emp_name}")
                 continue
             
-            # FILTRO 4: Excluir nombres que son claramente genéricos
+            # FILTRO 4: Excluir nombres genéricos
             generic_names = ['operations', 'admin', 'info', 'contact', 'support', 'office', 'staff', 'team', 'general']
             if any(generic.lower() in emp_name.lower() for generic in generic_names):
-                logger.debug(f"Excluido nombre genérico: {emp_name}")
                 continue
             
             # FILTRO 5: Filtrar por rol si se especifica
@@ -412,7 +405,7 @@ class EventsCalendarAKS:
         
         available_staff.sort(key=lambda x: x['total_events'], reverse=True)
         
-        logger.info(f"✅ Encontrados {len(available_staff)} empleados disponibles (filtrados nombres falsos)")
+        logger.info(f"✅ Encontrados {len(available_staff)} empleados disponibles")
         return available_staff
     
     def process_motorsport_data(self) -> Dict:
@@ -464,10 +457,14 @@ class EventsCalendarAKS:
             confirmed = fields.get('CONFIRMED', False)
             coordinator = fields.get('Name (from Event Coordinator)', [''])[0] if fields.get('Name (from Event Coordinator)') else 'Sin coordinador'
             
+            # CORRECCIÓN CRÍTICA: Verificar si event_id está EN el array EVENT
             event_reservations = []
             for res_record in reservations_data:
                 res_fields = res_record.get('fields', {})
-                if res_fields.get('EVENT', [''])[0] == event_record['id']:
+                event_links = res_fields.get('EVENT', [])
+                
+                # CORREGIDO: Verificar si el event_id está dentro del array
+                if event_record['id'] in event_links:
                     if 'FROM' in res_fields and 'TO' in res_fields:
                         try:
                             res_start = datetime.strptime(res_fields['FROM'], '%Y-%m-%d').date()
@@ -486,7 +483,8 @@ class EventsCalendarAKS:
                             
                             if is_remote:
                                 stats['remote_assignments'] += 1
-                        except:
+                        except Exception as e:
+                            logger.debug(f"Error procesando reservation: {str(e)}")
                             continue
             
             week_num = event_start.isocalendar()[1]
@@ -533,8 +531,6 @@ class EventsCalendarAKS:
         processed_events.sort(key=lambda x: x['from_date'])
         
         conflicts, employee_timelines = self.detect_conflicts(processed_events)
-        
-        # NUEVO: Detectar conexiones de viaje
         travel_connections = self.detect_travel_connections(processed_events)
         
         # Añadir info de viajes a cada evento
@@ -545,7 +541,6 @@ class EventsCalendarAKS:
                 event['travel_from_previous'] = travel_connections[event_id]['from_previous']
                 event['travel_to_next'] = travel_connections[event_id]['to_next']
                 
-                # Marcar reservations con flag de viaje
                 for res in event['reservations']:
                     res['has_travel_connection'] = res['employee'] in travel_connections[event_id]['people_with_travel']
         
@@ -559,7 +554,7 @@ class EventsCalendarAKS:
             'now_date': datetime.now().date()
         }
         
-        logger.info(f"✅ Procesados {stats['total_events']} eventos")
+        logger.info(f"✅ Procesados {stats['total_events']} eventos con {stats['total_reservations']} asignaciones")
         return result
     
     def _determine_set(self, championship: str) -> str:
@@ -579,11 +574,8 @@ class EventsCalendarAKS:
         """Crear Excel en SharePoint"""
         token = self.get_graph_token()
         if not token:
-            logger.warning("⚠️ No se pudo obtener token de Graph, omitiendo creación de Excel")
+            logger.warning("⚠️ No se pudo obtener token de Graph")
             return False
-        
-        # Implementación de creación Excel...
-        # (Por implementar completamente si lo necesitas)
         
         logger.info("✅ Excel creado en SharePoint (placeholder)")
         return True
@@ -593,7 +585,6 @@ class EventsCalendarAKS:
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'aks-calendar-2025')
 
-# Variables globales
 calendar_instance = None
 cached_dashboard_data = None
 last_update_status = {'success': False, 'timestamp': None}
@@ -614,7 +605,6 @@ def dashboard():
     if not data:
         return "<h1>Error obteniendo datos</h1>", 500
     
-    # Renderizar template con datos
     return render_template('dashboard.html',
         stats=data['stats'],
         events=data['events'],
@@ -659,11 +649,8 @@ def manual_update():
         return "Sistema no configurado", 400
     
     try:
-        # Limpiar cache
         calendar_instance.cache = {}
         calendar_instance.cache_expiry = {}
-        
-        # Reprocesar datos
         cached_dashboard_data = calendar_instance.process_motorsport_data()
         
         if cached_dashboard_data:
@@ -722,7 +709,6 @@ def api_event_details(event_id):
         return jsonify({'error': 'Sistema no configurado'}), 400
     
     try:
-        # Buscar el evento
         target_event = None
         for event in cached_dashboard_data['events']:
             if event['event_id'] == event_id:
@@ -732,7 +718,6 @@ def api_event_details(event_id):
         if not target_event:
             return jsonify({'error': 'Evento no encontrado'}), 404
         
-        # 1. Info básica del evento
         event_info = {
             'event_id': target_event['event_id'],
             'event_name': target_event['event_name'],
@@ -745,35 +730,43 @@ def api_event_details(event_id):
             'duration_days': target_event['duration_days']
         }
         
-        # 2. Personal asignado
+        # Personal asignado CON DETALLES DE CONFLICTOS
         staff = []
         for res in target_event['reservations']:
-            # Verificar si tiene conflictos
             has_conflict = False
+            conflict_details = []
+            
+            # Buscar conflictos específicos para esta persona en este evento
             for conflict in cached_dashboard_data['conflicts']:
                 if conflict['employee'] == res['employee']:
-                    has_conflict = True
-                    break
+                    if conflict['event1_id'] == event_id or conflict['event2_id'] == event_id:
+                        has_conflict = True
+                        other_event = conflict['event2'] if conflict['event1_id'] == event_id else conflict['event1']
+                        other_city = conflict['city2'] if conflict['event1_id'] == event_id else conflict['city1']
+                        conflict_details.append({
+                            'conflicting_event': other_event,
+                            'conflicting_city': other_city,
+                            'overlap_dates': f"{conflict['overlap_start']} - {conflict['overlap_end']}"
+                        })
             
             staff.append({
                 'name': res['employee'],
                 'from_date': res['from_date'].strftime('%d/%m/%Y'),
                 'to_date': res['to_date'].strftime('%d/%m/%Y'),
                 'remote': res['remote'],
-                'has_conflict': has_conflict
+                'has_conflict': has_conflict,
+                'conflict_details': conflict_details
             })
         
-        # 3. Eventos simultáneos (mismas fechas)
+        # Eventos simultáneos
         simultaneous_events = []
         for event in cached_dashboard_data['events']:
             if event['event_id'] == event_id:
                 continue
             
-            # Verificar si hay solapamiento de fechas
             if not (event['to_date'] < target_event['from_date'] or 
                     event['from_date'] > target_event['to_date']):
                 
-                # Buscar personal compartido
                 shared_staff = []
                 for res in event['reservations']:
                     for target_res in target_event['reservations']:
@@ -791,7 +784,7 @@ def api_event_details(event_id):
                     'shared_staff': shared_staff
                 })
         
-        # 4. Evento anterior más cercano
+        # Evento anterior más cercano
         previous_event = None
         min_days_before = float('inf')
         for event in cached_dashboard_data['events']:
@@ -810,7 +803,7 @@ def api_event_details(event_id):
                         'days_before': days_diff
                     }
         
-        # 5. Evento siguiente más cercano
+        # Evento siguiente más cercano
         next_event = None
         min_days_after = float('inf')
         for event in cached_dashboard_data['events']:
@@ -829,7 +822,6 @@ def api_event_details(event_id):
                         'days_after': days_diff
                     }
         
-        # 6. Análisis de viajes
         travel_analysis = {
             'has_previous': previous_event is not None,
             'has_next': next_event is not None,
@@ -853,12 +845,5 @@ def api_event_details(event_id):
 
 if __name__ == "__main__":
     logger.info("🏁 Events Calendar AKS - Al Kamel Management")
-    
     port = int(os.environ.get('PORT', 5000))
-    
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False,
-        threaded=True
-    )
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
