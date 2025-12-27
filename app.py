@@ -206,11 +206,13 @@ class EventsCalendarAKS:
                 fields=['Name', 'Email address', 'Job Role', 'Status']  # Nombres correctos de Airtable
             )
             
-            # 4. SERIES
-            series_data = self.get_airtable_data('SERIES')
-            
-            # 5. VENUES
-            venues_data = self.get_airtable_data('VENUES')
+            # 4. CAMPEONATOS/CIRCUITOS (reemplaza SERIES y VENUES)
+            try:
+                championships_data = self.get_airtable_data('Campeonatos-Circuitos-Entidades')
+                logger.info(f"📊 Obtenidos {len(championships_data)} registros de Campeonatos-Circuitos-Entidades")
+            except Exception as e:
+                logger.warning(f"⚠️ No se pudo cargar Campeonatos-Circuitos-Entidades: {str(e)}")
+                championships_data = []
             
             # Procesar DataFrames
             df_events = self._process_events(events_data)
@@ -229,8 +231,7 @@ class EventsCalendarAKS:
             result = {
                 'timeline_data': timeline_data,
                 'stats': stats,
-                'series': self._process_series(series_data),
-                'venues': self._process_venues(venues_data),
+                'championships': self._process_championships(championships_data),
                 'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
@@ -308,13 +309,24 @@ class EventsCalendarAKS:
             'active_events': len(df_combined[df_combined['Status'] == 'Active']) if 'Status' in df_combined.columns else 0
         }
     
-    def _process_series(self, series_data):
-        """Procesa series"""
-        return [record.get('fields', {}).get('Name', 'Unknown') for record in series_data]
-    
-    def _process_venues(self, venues_data):
-        """Procesa venues"""
-        return [record.get('fields', {}).get('Name', 'Unknown') for record in venues_data]
+    def _process_championships(self, championships_data):
+        """Procesa campeonatos y circuitos"""
+        result = {
+            'championships': [],
+            'circuits': []
+        }
+        
+        for record in championships_data:
+            fields = record.get('fields', {})
+            name = fields.get('CAMPEONATO-CIRCUITO-ENTIDAD', 'Unknown')
+            
+            # Separar por tipo
+            if fields.get('ES CAMPEONATO'):
+                result['championships'].append(name)
+            if fields.get('ES CIRCUITO'):
+                result['circuits'].append(name)
+        
+        return result
 
 # ===========================
 # INSTANCIA GLOBAL (con manejo de errores)
