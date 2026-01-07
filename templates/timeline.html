@@ -903,13 +903,14 @@
                     dayEvents.slice(0, 3).forEach(event => {
                         const isFirstDay = dateStr === event.from_date;
                         const hasConflict = event.needs_attention;
-                        const displayText = isFirstDay ? event.event_name : event.city;
+                        // Siempre mostrar el nombre del evento
+                        const displayText = event.event_name;
                         
                         html += `
                             <div class="event-bar ${hasConflict ? 'conflict' : ''}" 
                                  style="background: ${event.color}; color: white;"
                                  onclick="event.stopPropagation(); openEventDetailModal('${event.event_id}')"
-                                 title="${event.event_name}">
+                                 title="${event.event_name} - ${event.city}">
                                 ${displayText}
                                 ${hasConflict ? '<span class="conflict-badge">!</span>' : ''}
                             </div>

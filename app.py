@@ -86,20 +86,55 @@ class EventsCalendarAKS:
         
         # Países y circuitos europeos para alertas de vuelos
         self.european_locations = [
-            # Países
-            'españa', 'spain', 'francia', 'france', 'italia', 'italy', 
-            'alemania', 'germany', 'bélgica', 'belgium', 'países bajos', 
-            'netherlands', 'holanda', 'portugal', 'austria', 'suiza', 
-            'switzerland', 'reino unido', 'uk', 'united kingdom', 'gran bretaña',
-            'irlanda', 'ireland', 'mónaco', 'monaco', 'hungría', 'hungary',
-            'polonia', 'poland', 'república checa', 'czech', 'suecia', 'sweden',
-            'noruega', 'norway', 'dinamarca', 'denmark', 'finlandia', 'finland',
-            # Circuitos europeos conocidos
+            # Países en español e inglés
+            'españa', 'spain', 'spanish',
+            'francia', 'france', 'french',
+            'italia', 'italy', 'italian',
+            'alemania', 'germany', 'german',
+            'bélgica', 'belgium', 'belgian',
+            'países bajos', 'netherlands', 'holanda', 'dutch',
+            'portugal', 'portuguese',
+            'austria', 'austrian',
+            'suiza', 'switzerland', 'swiss',
+            'reino unido', 'uk', 'united kingdom', 'gran bretaña', 'england', 'british',
+            'irlanda', 'ireland', 'irish',
+            'mónaco', 'monaco',
+            'hungría', 'hungary', 'hungarian',
+            'polonia', 'poland', 'polish',
+            'república checa', 'czech', 'chequia',
+            'suecia', 'sweden', 'swedish',
+            'noruega', 'norway', 'norwegian',
+            'dinamarca', 'denmark', 'danish',
+            'finlandia', 'finland', 'finnish',
+            'grecia', 'greece', 'greek',
+            'croacia', 'croatia',
+            'eslovenia', 'slovenia',
+            'eslovaquia', 'slovakia',
+            'rumania', 'romania',
+            'bulgaria', 'bulgaria',
+            'serbia', 'serbia',
+            'lituania', 'lithuania',
+            'letonia', 'latvia',
+            'estonia', 'estonia',
+            # Ciudades europeas de motorsport
             'monza', 'spa', 'silverstone', 'barcelona', 'paul ricard', 'imola',
             'mugello', 'le mans', 'nürburgring', 'hockenheim', 'zandvoort',
             'hungaroring', 'red bull ring', 'spielberg', 'portimao', 'algarve',
             'circuit de barcelona', 'montmeló', 'magny-cours', 'estoril',
-            'jerez', 'valencia', 'aragon', 'motorland'
+            'jerez', 'valencia', 'aragon', 'motorland', 'alcañiz',
+            'brands hatch', 'donington', 'snetterton', 'oulton park',
+            'misano', 'vallelunga', 'franciacorta',
+            'spa-francorchamps', 'zolder',
+            'dijon', 'nogaro', 'lédenon', 'pau',
+            'lausitzring', 'sachsenring', 'oschersleben',
+            'most', 'brno',
+            'jarama', 'navarra', 'circuito de navarra',
+            'ascari', 'pergusa',
+            'assen', 'zandvoort',
+            'london', 'londres', 'berlin', 'berlín', 'roma', 'rome', 'paris', 'parís',
+            'madrid', 'milano', 'milan', 'munich', 'münchen',
+            'amsterdam', 'brussels', 'bruselas', 'vienna', 'viena',
+            'zurich', 'zúrich', 'lisboa', 'lisbon', 'budapest'
         ]
         
         # Configuración de alertas (días de anticipación)
