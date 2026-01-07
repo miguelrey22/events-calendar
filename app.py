@@ -2,7 +2,7 @@
 Events Calendar AKS - Al Kamel Management
 Sistema Completo de Gestión Visual de Eventos
 
-Versión: 4.0 - SIMPLIFICADO: Solo Airtable (sin Azure/SharePoint)
+Versión: 4.1 - Con Alertas Operativas (Material + Vuelos)
 Autor: Claude AI para Alkamel Management
 Fecha: Enero 2026
 """
@@ -82,6 +82,32 @@ class EventsCalendarAKS:
             'E1': 'SET6',
             'SCER': 'SCER',
             'CERVH': 'CERVH'
+        }
+        
+        # Países y circuitos europeos para alertas de vuelos
+        self.european_locations = [
+            # Países
+            'españa', 'spain', 'francia', 'france', 'italia', 'italy', 
+            'alemania', 'germany', 'bélgica', 'belgium', 'países bajos', 
+            'netherlands', 'holanda', 'portugal', 'austria', 'suiza', 
+            'switzerland', 'reino unido', 'uk', 'united kingdom', 'gran bretaña',
+            'irlanda', 'ireland', 'mónaco', 'monaco', 'hungría', 'hungary',
+            'polonia', 'poland', 'república checa', 'czech', 'suecia', 'sweden',
+            'noruega', 'norway', 'dinamarca', 'denmark', 'finlandia', 'finland',
+            # Circuitos europeos conocidos
+            'monza', 'spa', 'silverstone', 'barcelona', 'paul ricard', 'imola',
+            'mugello', 'le mans', 'nürburgring', 'hockenheim', 'zandvoort',
+            'hungaroring', 'red bull ring', 'spielberg', 'portimao', 'algarve',
+            'circuit de barcelona', 'montmeló', 'magny-cours', 'estoril',
+            'jerez', 'valencia', 'aragon', 'motorland'
+        ]
+        
+        # Configuración de alertas (días de anticipación)
+        self.alert_config = {
+            'material_urgent': 7,      # < 7 días = urgente
+            'material_warning': 14,    # 7-14 días = atención
+            'flights_europe': 30,      # < 1 mes para Europa
+            'flights_outside': 60      # < 2 meses fuera de Europa
         }
         
         logger.info("✅ Events Calendar AKS inicializado (modo Airtable)")
@@ -280,8 +306,14 @@ class EventsCalendarAKS:
         for emp_record in employees_data:
             emp_fields = emp_record.get('fields', {})
             emp_name = emp_fields.get('Name', 'Sin nombre')
-            emp_email = emp_fields.get('EMAIL', '')
-            emp_role = emp_fields.get('POSITION', '')
+            emp_email = emp_fields.get('Email address', '')
+            
+            # Job Role viene del lookup "Job Role (from Job Role)" que es un array
+            job_role_list = emp_fields.get('Job Role (from Job Role)', [])
+            emp_role = job_role_list[0] if job_role_list else ''
+            
+            # También obtener Role habilities (multiselect)
+            role_habilities = emp_fields.get('Role habilities', [])
             
             if '@' in emp_name:
                 continue
@@ -297,8 +329,24 @@ class EventsCalendarAKS:
             if any(generic.lower() in emp_name.lower() for generic in generic_names):
                 continue
             
-            if role_filter and role_filter.lower() not in emp_role.lower():
-                continue
+            # Filtrar por rol - buscar en Job Role y en Role habilities
+            if role_filter:
+                role_filter_lower = role_filter.lower()
+                role_match = False
+                
+                # Buscar en Job Role principal
+                if emp_role and role_filter_lower in emp_role.lower():
+                    role_match = True
+                
+                # Buscar en Role habilities
+                if not role_match:
+                    for hability in role_habilities:
+                        if role_filter_lower in hability.lower():
+                            role_match = True
+                            break
+                
+                if not role_match:
+                    continue
             
             is_available = True
             last_event_date = None
@@ -341,6 +389,7 @@ class EventsCalendarAKS:
                     'name': emp_name,
                     'email': emp_email,
                     'role': emp_role,
+                    'role_habilities': role_habilities,
                     'total_events': total_events,
                     'sets_experience': list(sets_experience),
                     'last_event': last_event_date.strftime('%d/%m/%Y') if last_event_date else 'Nunca',
@@ -351,6 +400,24 @@ class EventsCalendarAKS:
         
         logger.info(f"✅ Encontrados {len(available_staff)} empleados disponibles")
         return available_staff
+    
+    def get_all_job_roles(self) -> List[str]:
+        """Obtener todos los Job Roles únicos de los empleados"""
+        employees_data = self.get_airtable_data('Employee directory')
+        
+        job_roles = set()
+        
+        for emp_record in employees_data:
+            emp_fields = emp_record.get('fields', {})
+            
+            # Job Role del lookup
+            job_role_list = emp_fields.get('Job Role (from Job Role)', [])
+            for role in job_role_list:
+                if role and role.strip():
+                    job_roles.add(role.strip())
+        
+        # Ordenar alfabéticamente
+        return sorted(list(job_roles))
     
     def process_motorsport_data(self) -> Dict:
         """Procesar datos completos - usa PEOPLE RESERVED"""
@@ -533,6 +600,178 @@ class EventsCalendarAKS:
                 return value
         
         return 'default'
+    
+    def is_in_europe(self, location: str) -> bool:
+        """Determinar si una ubicación está en Europa"""
+        if not location:
+            return False
+        location_lower = location.lower()
+        return any(euro_loc in location_lower for euro_loc in self.european_locations)
+    
+    def get_operational_alerts(self, events: List[Dict]) -> Dict:
+        """
+        Generar alertas operativas para material y vuelos/hoteles.
+        
+        Reglas:
+        - Material: Alerta si faltan < 14 días para salida de material
+        - Vuelos Europa: Alerta si faltan < 30 días y no confirmados
+        - Vuelos Fuera UE: Alerta si faltan < 60 días y no confirmados
+        """
+        today = datetime.now().date()
+        
+        alerts = {
+            'material': [],
+            'flights_europe': [],
+            'flights_outside': [],
+            'stats': {
+                'material_urgent': 0,
+                'material_warning': 0,
+                'flights_europe': 0,
+                'flights_outside': 0,
+                'total': 0
+            }
+        }
+        
+        for event in events:
+            event_start = event['from_date']
+            event_name = event['event_name']
+            city = event.get('city', '')
+            coordinator = event.get('coordinator', 'Sin asignar')
+            employees_count = event.get('employees_count', 0)
+            
+            # Calcular días hasta el evento
+            days_until_event = (event_start - today).days
+            
+            # Saltar eventos pasados
+            if days_until_event < 0:
+                continue
+            
+            # ===== ALERTAS DE MATERIAL =====
+            # Asumimos que el material sale ~5 días antes del evento
+            material_departure_days = days_until_event - 5
+            
+            if material_departure_days <= self.alert_config['material_warning']:
+                urgency = 'urgent' if material_departure_days <= self.alert_config['material_urgent'] else 'warning'
+                
+                material_date = today + timedelta(days=material_departure_days)
+                
+                alert = {
+                    'event_id': event['event_id'],
+                    'event_name': event_name,
+                    'championship': event.get('championship', ''),
+                    'city': city,
+                    'coordinator': coordinator,
+                    'material_date': material_date.strftime('%d/%m/%Y'),
+                    'event_dates': f"{event_start.strftime('%d/%m')} - {event['to_date'].strftime('%d/%m/%Y')}",
+                    'days_until_material': max(0, material_departure_days),
+                    'days_until_event': days_until_event,
+                    'urgency': urgency,
+                    'set_name': event.get('set_name', 'default'),
+                    'color': event.get('color', '#BDC3C7')
+                }
+                
+                alerts['material'].append(alert)
+                
+                if urgency == 'urgent':
+                    alerts['stats']['material_urgent'] += 1
+                else:
+                    alerts['stats']['material_warning'] += 1
+            
+            # ===== ALERTAS DE VUELOS/HOTELES =====
+            # Verificar si el evento tiene vuelos confirmados
+            # Por ahora asumimos que si no hay campo específico, no están confirmados
+            flights_confirmed = event.get('flights_confirmed', False)
+            
+            if not flights_confirmed:
+                is_europe = self.is_in_europe(city)
+                required_days = self.alert_config['flights_europe'] if is_europe else self.alert_config['flights_outside']
+                
+                if days_until_event <= required_days:
+                    alert = {
+                        'event_id': event['event_id'],
+                        'event_name': event_name,
+                        'championship': event.get('championship', ''),
+                        'city': city,
+                        'country_flag': self._get_country_flag(city),
+                        'coordinator': coordinator,
+                        'event_dates': f"{event_start.strftime('%d/%m')} - {event['to_date'].strftime('%d/%m/%Y')}",
+                        'days_until_event': days_until_event,
+                        'employees_count': employees_count,
+                        'is_europe': is_europe,
+                        'required_notice': required_days,
+                        'urgency': 'critical' if days_until_event <= (required_days // 2) else 'urgent',
+                        'set_name': event.get('set_name', 'default'),
+                        'color': event.get('color', '#BDC3C7')
+                    }
+                    
+                    if is_europe:
+                        alerts['flights_europe'].append(alert)
+                        alerts['stats']['flights_europe'] += 1
+                    else:
+                        alerts['flights_outside'].append(alert)
+                        alerts['stats']['flights_outside'] += 1
+        
+        # Ordenar por urgencia (menos días = más urgente)
+        alerts['material'].sort(key=lambda x: x['days_until_material'])
+        alerts['flights_europe'].sort(key=lambda x: x['days_until_event'])
+        alerts['flights_outside'].sort(key=lambda x: x['days_until_event'])
+        
+        alerts['stats']['total'] = (
+            alerts['stats']['material_urgent'] + 
+            alerts['stats']['material_warning'] + 
+            alerts['stats']['flights_europe'] + 
+            alerts['stats']['flights_outside']
+        )
+        
+        logger.info(f"🚨 Generadas {alerts['stats']['total']} alertas operativas")
+        return alerts
+    
+    def _get_country_flag(self, city: str) -> str:
+        """Obtener emoji de bandera según la ciudad/país"""
+        if not city:
+            return '🏁'
+        
+        city_lower = city.lower()
+        
+        flag_mapping = {
+            # Europa
+            'spain': '🇪🇸', 'españa': '🇪🇸', 'barcelona': '🇪🇸', 'valencia': '🇪🇸', 
+            'jerez': '🇪🇸', 'aragon': '🇪🇸', 'montmeló': '🇪🇸',
+            'france': '🇫🇷', 'francia': '🇫🇷', 'le mans': '🇫🇷', 'paul ricard': '🇫🇷', 
+            'magny': '🇫🇷',
+            'italy': '🇮🇹', 'italia': '🇮🇹', 'monza': '🇮🇹', 'imola': '🇮🇹', 'mugello': '🇮🇹',
+            'germany': '🇩🇪', 'alemania': '🇩🇪', 'nürburgring': '🇩🇪', 'hockenheim': '🇩🇪',
+            'belgium': '🇧🇪', 'bélgica': '🇧🇪', 'spa': '🇧🇪',
+            'uk': '🇬🇧', 'silverstone': '🇬🇧', 'britain': '🇬🇧',
+            'netherlands': '🇳🇱', 'holanda': '🇳🇱', 'zandvoort': '🇳🇱',
+            'austria': '🇦🇹', 'spielberg': '🇦🇹', 'red bull ring': '🇦🇹',
+            'portugal': '🇵🇹', 'portimao': '🇵🇹', 'algarve': '🇵🇹', 'estoril': '🇵🇹',
+            'monaco': '🇲🇨', 'mónaco': '🇲🇨',
+            'hungary': '🇭🇺', 'hungría': '🇭🇺', 'hungaroring': '🇭🇺',
+            # Fuera de Europa
+            'usa': '🇺🇸', 'estados unidos': '🇺🇸', 'sebring': '🇺🇸', 'daytona': '🇺🇸', 
+            'austin': '🇺🇸', 'cota': '🇺🇸', 'laguna': '🇺🇸', 'watkins': '🇺🇸',
+            'brazil': '🇧🇷', 'brasil': '🇧🇷', 'são paulo': '🇧🇷', 'interlagos': '🇧🇷',
+            'mexico': '🇲🇽', 'méxico': '🇲🇽',
+            'canada': '🇨🇦', 'canadá': '🇨🇦', 'montreal': '🇨🇦',
+            'japan': '🇯🇵', 'japón': '🇯🇵', 'suzuka': '🇯🇵', 'fuji': '🇯🇵',
+            'china': '🇨🇳', 'shanghai': '🇨🇳',
+            'australia': '🇦🇺', 'melbourne': '🇦🇺',
+            'saudi': '🇸🇦', 'arabia': '🇸🇦', 'diriyah': '🇸🇦', 'jeddah': '🇸🇦',
+            'qatar': '🇶🇦', 'losail': '🇶🇦',
+            'bahrain': '🇧🇭', 'bahrein': '🇧🇭', 'sakhir': '🇧🇭',
+            'uae': '🇦🇪', 'abu dhabi': '🇦🇪', 'dubai': '🇦🇪', 'yas': '🇦🇪',
+            'singapore': '🇸🇬', 'singapur': '🇸🇬',
+            'korea': '🇰🇷', 'corea': '🇰🇷',
+            'south africa': '🇿🇦', 'sudáfrica': '🇿🇦', 'kyalami': '🇿🇦',
+            'morocco': '🇲🇦', 'marruecos': '🇲🇦', 'marrakech': '🇲🇦',
+        }
+        
+        for key, flag in flag_mapping.items():
+            if key in city_lower:
+                return flag
+        
+        return '🏁'
 
 
 # ============================================
@@ -695,6 +934,26 @@ def api_available_staff():
         },
         'staff': available
     })
+
+
+@app.route('/api/job-roles')
+def api_job_roles():
+    """API para obtener todos los Job Roles disponibles"""
+    global calendar_instance
+    
+    if not calendar_instance:
+        return jsonify({'error': 'Sistema no configurado'}), 400
+    
+    try:
+        job_roles = calendar_instance.get_all_job_roles()
+        return jsonify({
+            'success': True,
+            'count': len(job_roles),
+            'roles': job_roles
+        })
+    except Exception as e:
+        logger.error(f"Error obteniendo job roles: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/timeline')
@@ -882,6 +1141,46 @@ def api_event_details(event_id):
         
     except Exception as e:
         logger.error(f"Error obteniendo detalles de evento: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
+# ALERTAS OPERATIVAS
+# ============================================
+
+@app.route('/alerts')
+def alerts():
+    """Vista de Alertas Operativas"""
+    global calendar_instance, cached_dashboard_data
+    
+    if not calendar_instance:
+        return render_template('config_needed.html')
+    
+    if not cached_dashboard_data:
+        cached_dashboard_data = calendar_instance.process_motorsport_data()
+    
+    return render_template('alerts.html')
+
+
+@app.route('/api/alerts-data')
+def api_alerts_data():
+    """API para obtener datos de alertas operativas"""
+    global calendar_instance, cached_dashboard_data
+    
+    if not calendar_instance or not cached_dashboard_data:
+        return jsonify({'error': 'Sistema no configurado'}), 400
+    
+    try:
+        alerts = calendar_instance.get_operational_alerts(cached_dashboard_data['events'])
+        
+        return jsonify({
+            'success': True,
+            'alerts': alerts,
+            'last_updated': cached_dashboard_data.get('last_updated')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo alertas: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 

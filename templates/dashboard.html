@@ -764,12 +764,7 @@
                     <div class="form-group">
                         <label>🎯 Filtrar por Rol (opcional)</label>
                         <select id="search-role">
-                            <option value="">Todos los roles</option>
-                            <option value="timekeeper">Timekeeper</option>
-                            <option value="chief">Chief Timekeeper</option>
-                            <option value="data">Data Operator</option>
-                            <option value="it">IT Support</option>
-                            <option value="project">Project Manager</option>
+                            <option value="">Cargando roles...</option>
                         </select>
                     </div>
                 </div>
@@ -1118,6 +1113,35 @@
                 closeEventModal();
             }
         }
+        
+        // Cargar Job Roles dinámicamente desde Airtable
+        function loadJobRoles() {
+            fetch('/api/job-roles')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('search-role');
+                    select.innerHTML = '<option value="">Todos los roles</option>';
+                    
+                    if (data.success && data.roles) {
+                        data.roles.forEach(role => {
+                            const option = document.createElement('option');
+                            option.value = role;
+                            option.textContent = role;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando roles:', error);
+                    const select = document.getElementById('search-role');
+                    select.innerHTML = '<option value="">Todos los roles</option>';
+                });
+        }
+        
+        // Cargar roles al iniciar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            loadJobRoles();
+        });
     </script>
 
     <!-- MODAL DE EVENTO DETALLADO -->
