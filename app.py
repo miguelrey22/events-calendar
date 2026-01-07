@@ -2,9 +2,9 @@
 Events Calendar AKS - Al Kamel Management
 Sistema Completo de Gestión Visual de Eventos
 
-Versión: 3.3 - CORREGIDO: Usa PEOPLE RESERVED para mostrar todos los empleados
+Versión: 4.0 - SIMPLIFICADO: Solo Airtable (sin Azure/SharePoint)
 Autor: Claude AI para Alkamel Management
-Fecha: 18/10/2025
+Fecha: Enero 2026
 """
 
 import os
@@ -13,19 +13,14 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, date
 import requests
-import msal
 import threading
 import schedule
 import time
 from flask import Flask, render_template, request, jsonify
 import logging
 from typing import Dict, List, Optional, Tuple
-import sqlite3
-from io import BytesIO
-import warnings
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from collections import defaultdict
+import warnings
 
 warnings.filterwarnings('ignore')
 
@@ -44,16 +39,10 @@ class EventsCalendarAKS:
         self.airtable_token = config.get('airtable_token')
         self.airtable_base_id = config.get('airtable_base_id', 'app4p2TY96NofXW4u')
         
-        # Microsoft Graph
-        self.tenant_id = config.get('tenant_id')
-        self.client_id = config.get('client_id')
-        self.client_secret = config.get('client_secret')
-        self.sharepoint_site_url = config.get('sharepoint_site_url')
-        
         # Configuración
         self.auto_update_interval = config.get('auto_update_interval', 15)
         self.max_retries = 3
-        self.timeout_seconds = 90  # Aumentado para Airtable
+        self.timeout_seconds = 90
         
         # Cache
         self.cache = {}
@@ -64,10 +53,6 @@ class EventsCalendarAKS:
             'Authorization': f'Bearer {self.airtable_token}',
             'Content-Type': 'application/json'
         }
-        
-        # MSAL
-        self.msal_app = self._init_msal()
-        self.graph_token = None
         
         # Colores por SET
         self.color_mapping = {
@@ -99,43 +84,7 @@ class EventsCalendarAKS:
             'CERVH': 'CERVH'
         }
         
-        logger.info("✅ Events Calendar AKS inicializado")
-    
-    def _init_msal(self):
-        """Inicializar MSAL"""
-        try:
-            if not all([self.tenant_id, self.client_id, self.client_secret]):
-                logger.warning("⚠️ Credenciales de Microsoft Graph incompletas")
-                return None
-            
-            return msal.ConfidentialClientApplication(
-                client_id=self.client_id,
-                client_credential=self.client_secret,
-                authority=f"https://login.microsoftonline.com/{self.tenant_id}"
-            )
-        except Exception as e:
-            logger.error(f"❌ Error inicializando MSAL: {str(e)}")
-            return None
-    
-    def get_graph_token(self) -> Optional[str]:
-        """Obtener token Microsoft Graph"""
-        if not self.msal_app:
-            return None
-        
-        try:
-            result = self.msal_app.acquire_token_for_client(
-                scopes=["https://graph.microsoft.com/.default"]
-            )
-            
-            if "access_token" in result:
-                self.graph_token = result["access_token"]
-                return self.graph_token
-            else:
-                logger.error(f"❌ Error token: {result.get('error_description')}")
-                return None
-        except Exception as e:
-            logger.error(f"❌ Excepción obteniendo token: {str(e)}")
-            return None
+        logger.info("✅ Events Calendar AKS inicializado (modo Airtable)")
     
     def get_airtable_data(self, table_name: str) -> List[Dict]:
         """Obtener datos de Airtable con cache y reintentos"""
@@ -160,7 +109,6 @@ class EventsCalendarAKS:
         
         all_records = []
         
-        # Intentar hasta max_retries veces
         for attempt in range(self.max_retries):
             try:
                 params = {'pageSize': 100}
@@ -191,7 +139,6 @@ class EventsCalendarAKS:
                     logger.info(f"📊 Obtenidos {len(all_records)} registros de {table_name}")
                     return all_records
                 
-                # Si no hay records, reintentar
                 if attempt < self.max_retries - 1:
                     logger.warning(f"⚠️ Reintento {attempt + 1}/{self.max_retries} para {table_name}")
                     time.sleep(2)
@@ -205,7 +152,6 @@ class EventsCalendarAKS:
         
         return []
 
-    
     def detect_conflicts(self, events: List[Dict]) -> Tuple[List[Dict], Dict]:
         """Detectar conflictos de personal con detalles completos"""
         conflicts = []
@@ -232,7 +178,6 @@ class EventsCalendarAKS:
                     event1 = timeline[i]
                     event2 = timeline[j]
                     
-                    # Verificar solapamiento
                     if event1['to'] >= event2['from']:
                         conflict_key = f"{employee}_{event1['event_id']}_{event2['event_id']}"
                         if conflict_key not in conflict_details:
@@ -291,7 +236,6 @@ class EventsCalendarAKS:
                     if other_event['event_id'] == event['event_id']:
                         continue
                     
-                    # Evento anterior (termina hasta 7 días antes)
                     days_between_prev = (current_event_start - other_event['to_date']).days
                     if 0 < days_between_prev <= 7:
                         event_connections['from_previous'].append({
@@ -302,7 +246,6 @@ class EventsCalendarAKS:
                         })
                         has_connection = True
                     
-                    # Evento siguiente (empieza hasta 7 días después)
                     days_between_next = (other_event['from_date'] - current_event_end).days
                     if 0 < days_between_next <= 7:
                         event_connections['to_next'].append({
@@ -327,16 +270,9 @@ class EventsCalendarAKS:
         employees_data = self.get_airtable_data('Employee directory')
         reservations_data = self.get_airtable_data('EVENTS RESERVATIONS')
         
-        # Nombres falsos/placeholders a excluir
         fake_names = [
-            'airtable.user1', 
-            'tba', 
-            'tbc',
-            'to be announced',
-            'to be confirmed',
-            'por confirmar',
-            'por anunciar',
-            'pendiente'
+            'airtable.user1', 'tba', 'tbc', 'to be announced',
+            'to be confirmed', 'por confirmar', 'por anunciar', 'pendiente'
         ]
         
         available_staff = []
@@ -347,26 +283,20 @@ class EventsCalendarAKS:
             emp_email = emp_fields.get('EMAIL', '')
             emp_role = emp_fields.get('POSITION', '')
             
-            # FILTRO 1: Excluir nombres que contienen @
             if '@' in emp_name:
                 continue
             
-            # FILTRO 2: Excluir nombres falsos/placeholders
             emp_name_lower = emp_name.lower().strip()
             if any(fake_name in emp_name_lower for fake_name in fake_names):
-                logger.debug(f"Excluido nombre falso: {emp_name}")
                 continue
             
-            # FILTRO 3: Excluir nombres muy cortos
             if len(emp_name.strip()) < 3:
                 continue
             
-            # FILTRO 4: Excluir nombres genéricos
             generic_names = ['operations', 'admin', 'info', 'contact', 'support', 'office', 'staff', 'team', 'general']
             if any(generic.lower() in emp_name.lower() for generic in generic_names):
                 continue
             
-            # FILTRO 5: Filtrar por rol si se especifica
             if role_filter and role_filter.lower() not in emp_role.lower():
                 continue
             
@@ -423,7 +353,7 @@ class EventsCalendarAKS:
         return available_staff
     
     def process_motorsport_data(self) -> Dict:
-        """Procesar datos completos - CORREGIDO: usa PEOPLE RESERVED"""
+        """Procesar datos completos - usa PEOPLE RESERVED"""
         logger.info("🔄 Procesando datos...")
         
         events_data = self.get_airtable_data('EVENTS')
@@ -434,7 +364,6 @@ class EventsCalendarAKS:
             logger.error("❌ No se encontraron eventos")
             return {}
         
-        # Crear diccionario de empleados por ID
         employees_by_id = {}
         for emp in employees_data:
             employees_by_id[emp['id']] = emp.get('fields', {}).get('Name', 'Sin nombre')
@@ -477,16 +406,13 @@ class EventsCalendarAKS:
             confirmed = fields.get('CONFIRMED', False)
             coordinator = fields.get('Name (from Event Coordinator)', [''])[0] if fields.get('Name (from Event Coordinator)') else 'Sin coordinador'
             
-            # ✅ CAMBIO PRINCIPAL: Usar PEOPLE RESERVED en lugar de solo EVENTS RESERVATIONS
             people_reserved_ids = fields.get('PEOPLE RESERVED', [])
             
             event_reservations = []
             
-            # Obtener datos de CADA empleado asignado
             for emp_id in people_reserved_ids:
                 emp_name = employees_by_id.get(emp_id, 'Sin nombre')
                 
-                # Buscar si tiene reservation con fechas específicas
                 emp_reservation = None
                 for res_record in reservations_data:
                     res_fields = res_record.get('fields', {})
@@ -515,11 +441,9 @@ class EventsCalendarAKS:
                             except:
                                 continue
                 
-                # Si tiene reservation específica, usarla; si no, usar fechas del evento
                 if emp_reservation:
                     event_reservations.append(emp_reservation)
                 else:
-                    # Empleado asignado pero sin reservation específica
                     event_reservations.append({
                         'employee': emp_name,
                         'from_date': event_start,
@@ -574,7 +498,6 @@ class EventsCalendarAKS:
         conflicts, employee_timelines = self.detect_conflicts(processed_events)
         travel_connections = self.detect_travel_connections(processed_events)
         
-        # Añadir info de viajes a cada evento
         for event in processed_events:
             event_id = event['event_id']
             if event_id in travel_connections:
@@ -610,25 +533,40 @@ class EventsCalendarAKS:
                 return value
         
         return 'default'
-    
-    def create_sharepoint_excel(self, processed_data: Dict) -> bool:
-        """Crear Excel en SharePoint"""
-        token = self.get_graph_token()
-        if not token:
-            logger.warning("⚠️ No se pudo obtener token de Graph")
-            return False
-        
-        logger.info("✅ Excel creado en SharePoint (placeholder)")
-        return True
 
 
-# Aplicación Flask
+# ============================================
+# APLICACIÓN FLASK
+# ============================================
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'aks-calendar-2025')
 
 calendar_instance = None
 cached_dashboard_data = None
 last_update_status = {'success': False, 'timestamp': None}
+
+
+def init_from_env():
+    """Inicializar desde variables de entorno"""
+    global calendar_instance
+    
+    airtable_token = os.environ.get('AIRTABLE_TOKEN')
+    if airtable_token:
+        config = {
+            'airtable_token': airtable_token,
+            'airtable_base_id': os.environ.get('AIRTABLE_BASE_ID', 'app4p2TY96NofXW4u'),
+            'auto_update_interval': 15
+        }
+        calendar_instance = EventsCalendarAKS(config)
+        logger.info("✅ Sistema inicializado desde variables de entorno")
+        return True
+    return False
+
+
+# Intentar inicializar al arrancar
+init_from_env()
+
 
 @app.route('/')
 def dashboard():
@@ -656,30 +594,46 @@ def dashboard():
         color_mapping=calendar_instance.color_mapping
     )
 
+
 @app.route('/config', methods=['GET', 'POST'])
 def config():
-    """Configuración del sistema"""
+    """Configuración del sistema - Solo Airtable"""
     if request.method == 'POST':
         try:
+            airtable_token = request.form.get('airtable_token')
+            airtable_base_id = request.form.get('airtable_base_id', 'app4p2TY96NofXW4u')
+            
+            if not airtable_token:
+                return jsonify({'error': 'Token de Airtable requerido'}), 400
+            
             config_data = {
-                'airtable_token': request.form.get('airtable_token'),
-                'airtable_base_id': request.form.get('airtable_base_id', 'app4p2TY96NofXW4u'),
-                'tenant_id': request.form.get('tenant_id'),
-                'client_id': request.form.get('client_id'),
-                'client_secret': request.form.get('client_secret'),
-                'sharepoint_site_url': request.form.get('sharepoint_site_url'),
+                'airtable_token': airtable_token,
+                'airtable_base_id': airtable_base_id,
                 'auto_update_interval': 15
             }
             
-            global calendar_instance
-            calendar_instance = EventsCalendarAKS(config_data)
+            # Probar conexión
+            test_instance = EventsCalendarAKS(config_data)
+            test_data = test_instance.get_airtable_data('EVENTS')
             
-            return jsonify({'success': True, 'message': 'Sistema configurado'})
+            if not test_data:
+                return jsonify({'error': 'No se pudo conectar a Airtable. Verifica el token.'}), 400
+            
+            global calendar_instance, cached_dashboard_data
+            calendar_instance = test_instance
+            cached_dashboard_data = None
+            
+            return jsonify({
+                'success': True, 
+                'message': f'Conectado a Airtable. Encontrados {len(test_data)} eventos.'
+            })
             
         except Exception as e:
+            logger.error(f"Error en config: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
     return render_template('config.html')
+
 
 @app.route('/update')
 def manual_update():
@@ -707,6 +661,7 @@ def manual_update():
             return "<h1>Error en actualización</h1>", 500
     except Exception as e:
         return f"<h1>Error: {str(e)}</h1>", 500
+
 
 @app.route('/api/available-staff')
 def api_available_staff():
@@ -740,6 +695,8 @@ def api_available_staff():
         },
         'staff': available
     })
+
+
 @app.route('/timeline')
 def timeline():
     """Vista Timeline estilo Gantt"""
@@ -750,6 +707,7 @@ def timeline():
     
     return render_template('timeline.html')
 
+
 @app.route('/api/timeline-data')
 def api_timeline_data():
     """API para obtener datos del timeline"""
@@ -759,14 +717,12 @@ def api_timeline_data():
         return jsonify({'error': 'Sistema no configurado'}), 400
     
     try:
-        # Convertir fechas a string para JSON
         events_json = []
         for event in cached_dashboard_data['events']:
             event_copy = event.copy()
             event_copy['from_date'] = event['from_date'].strftime('%Y-%m-%d')
             event_copy['to_date'] = event['to_date'].strftime('%Y-%m-%d')
             
-            # Convertir fechas de reservations
             reservations_json = []
             for res in event['reservations']:
                 res_copy = res.copy()
@@ -782,12 +738,14 @@ def api_timeline_data():
             'events': events_json,
             'conflicts': cached_dashboard_data['conflicts'],
             'employee_timelines': cached_dashboard_data.get('employee_timelines', {}),
-            'color_mapping': calendar_instance.color_mapping  # ✅ AÑADIR ESTA LÍNEA
+            'color_mapping': calendar_instance.color_mapping
         })
         
     except Exception as e:
         logger.error(f"Error en timeline data: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/event-details/<event_id>')
 def api_event_details(event_id):
     """API para obtener detalles completos de un evento"""
@@ -818,13 +776,11 @@ def api_event_details(event_id):
             'duration_days': target_event['duration_days']
         }
         
-        # Personal asignado CON DETALLES DE CONFLICTOS
         staff = []
         for res in target_event['reservations']:
             has_conflict = False
             conflict_details = []
             
-            # Buscar conflictos específicos para esta persona en este evento
             for conflict in cached_dashboard_data['conflicts']:
                 if conflict['employee'] == res['employee']:
                     if conflict['event1_id'] == event_id or conflict['event2_id'] == event_id:
@@ -846,7 +802,6 @@ def api_event_details(event_id):
                 'conflict_details': conflict_details
             })
         
-        # Eventos simultáneos
         simultaneous_events = []
         for event in cached_dashboard_data['events']:
             if event['event_id'] == event_id:
@@ -872,7 +827,6 @@ def api_event_details(event_id):
                     'shared_staff': shared_staff
                 })
         
-        # Evento anterior más cercano
         previous_event = None
         min_days_before = float('inf')
         for event in cached_dashboard_data['events']:
@@ -891,7 +845,6 @@ def api_event_details(event_id):
                         'days_before': days_diff
                     }
         
-        # Evento siguiente más cercano
         next_event = None
         min_days_after = float('inf')
         for event in cached_dashboard_data['events']:
@@ -931,7 +884,21 @@ def api_event_details(event_id):
         logger.error(f"Error obteniendo detalles de evento: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/status')
+def api_status():
+    """API para verificar estado del sistema"""
+    global calendar_instance, cached_dashboard_data
+    
+    return jsonify({
+        'configured': calendar_instance is not None,
+        'has_data': cached_dashboard_data is not None,
+        'last_updated': cached_dashboard_data.get('last_updated') if cached_dashboard_data else None,
+        'events_count': len(cached_dashboard_data.get('events', [])) if cached_dashboard_data else 0
+    })
+
+
 if __name__ == "__main__":
-    logger.info("🏁 Events Calendar AKS - Al Kamel Management")
+    logger.info("🏁 Events Calendar AKS - Al Kamel Management (Solo Airtable)")
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
