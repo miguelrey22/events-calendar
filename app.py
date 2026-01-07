@@ -2,9 +2,9 @@
 Events Calendar AKS - Al Kamel Management
 Sistema Completo de Gestión Visual de Eventos
 
-Versión: 3.3 - CORREGIDO: Usa PEOPLE RESERVED para mostrar todos los empleados
-Autor: Claude AI para Alkamel Management
-Fecha: 18/10/2025
+Versión: 4.0 - Simplificado: Solo Airtable, Azure eliminado
+Autor: Gemini (basado en código de Claude AI para Alkamel Management)
+Fecha: 07/01/2026
 """
 
 import os
@@ -13,7 +13,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, date
 import requests
-import msal
 import threading
 import schedule
 import time
@@ -44,12 +43,6 @@ class EventsCalendarAKS:
         self.airtable_token = config.get('airtable_token')
         self.airtable_base_id = config.get('airtable_base_id', 'app4p2TY96NofXW4u')
         
-        # Microsoft Graph
-        self.tenant_id = config.get('tenant_id')
-        self.client_id = config.get('client_id')
-        self.client_secret = config.get('client_secret')
-        self.sharepoint_site_url = config.get('sharepoint_site_url')
-        
         # Configuración
         self.auto_update_interval = config.get('auto_update_interval', 15)
         self.max_retries = 3
@@ -64,10 +57,6 @@ class EventsCalendarAKS:
             'Authorization': f'Bearer {self.airtable_token}',
             'Content-Type': 'application/json'
         }
-        
-        # MSAL
-        self.msal_app = self._init_msal()
-        self.graph_token = None
         
         # Colores por SET
         self.color_mapping = {
@@ -100,42 +89,6 @@ class EventsCalendarAKS:
         }
         
         logger.info("✅ Events Calendar AKS inicializado")
-    
-    def _init_msal(self):
-        """Inicializar MSAL"""
-        try:
-            if not all([self.tenant_id, self.client_id, self.client_secret]):
-                logger.warning("⚠️ Credenciales de Microsoft Graph incompletas")
-                return None
-            
-            return msal.ConfidentialClientApplication(
-                client_id=self.client_id,
-                client_credential=self.client_secret,
-                authority=f"https://login.microsoftonline.com/{self.tenant_id}"
-            )
-        except Exception as e:
-            logger.error(f"❌ Error inicializando MSAL: {str(e)}")
-            return None
-    
-    def get_graph_token(self) -> Optional[str]:
-        """Obtener token Microsoft Graph"""
-        if not self.msal_app:
-            return None
-        
-        try:
-            result = self.msal_app.acquire_token_for_client(
-                scopes=["https://graph.microsoft.com/.default"]
-            )
-            
-            if "access_token" in result:
-                self.graph_token = result["access_token"]
-                return self.graph_token
-            else:
-                logger.error(f"❌ Error token: {result.get('error_description')}")
-                return None
-        except Exception as e:
-            logger.error(f"❌ Excepción obteniendo token: {str(e)}")
-            return None
     
     def get_airtable_data(self, table_name: str) -> List[Dict]:
         """Obtener datos de Airtable con cache y reintentos"""
@@ -611,15 +564,15 @@ class EventsCalendarAKS:
         
         return 'default'
     
-    def create_sharepoint_excel(self, processed_data: Dict) -> bool:
-        """Crear Excel en SharePoint"""
-        token = self.get_graph_token()
-        if not token:
-            logger.warning("⚠️ No se pudo obtener token de Graph")
-            return False
-        
-        logger.info("✅ Excel creado en SharePoint (placeholder)")
-        return True
+    #def create_sharepoint_excel(self, processed_data: Dict) -> bool:
+    #    """Crear Excel en SharePoint"""
+    #    token = self.get_graph_token()
+    #    if not token:
+    #        logger.warning("⚠️ No se pudo obtener token de Graph")
+    #        return False
+    #
+    #    logger.info("✅ Excel creado en SharePoint (placeholder)")
+    #    return True
 
 
 # Aplicación Flask
@@ -664,10 +617,10 @@ def config():
             config_data = {
                 'airtable_token': request.form.get('airtable_token'),
                 'airtable_base_id': request.form.get('airtable_base_id', 'app4p2TY96NofXW4u'),
-                'tenant_id': request.form.get('tenant_id'),
-                'client_id': request.form.get('client_id'),
-                'client_secret': request.form.get('client_secret'),
-                'sharepoint_site_url': request.form.get('sharepoint_site_url'),
+                #'tenant_id': request.form.get('tenant_id'),
+                #'client_id': request.form.get('client_id'),
+                #'client_secret': request.form.get('client_secret'),
+                #'sharepoint_site_url': request.form.get('sharepoint_site_url'),
                 'auto_update_interval': 15
             }
             
@@ -833,105 +786,4 @@ def api_event_details(event_id):
                         other_city = conflict['city2'] if conflict['event1_id'] == event_id else conflict['city1']
                         conflict_details.append({
                             'conflicting_event': other_event,
-                            'conflicting_city': other_city,
-                            'overlap_dates': f"{conflict['overlap_start']} - {conflict['overlap_end']}"
-                        })
-            
-            staff.append({
-                'name': res['employee'],
-                'from_date': res['from_date'].strftime('%d/%m/%Y'),
-                'to_date': res['to_date'].strftime('%d/%m/%Y'),
-                'remote': res['remote'],
-                'has_conflict': has_conflict,
-                'conflict_details': conflict_details
-            })
-        
-        # Eventos simultáneos
-        simultaneous_events = []
-        for event in cached_dashboard_data['events']:
-            if event['event_id'] == event_id:
-                continue
-            
-            if not (event['to_date'] < target_event['from_date'] or 
-                    event['from_date'] > target_event['to_date']):
-                
-                shared_staff = []
-                for res in event['reservations']:
-                    for target_res in target_event['reservations']:
-                        if res['employee'] == target_res['employee']:
-                            shared_staff.append(res['employee'])
-                
-                simultaneous_events.append({
-                    'event_id': event['event_id'],
-                    'event_name': event['event_name'],
-                    'city': event['city'],
-                    'set_name': event['set_name'],
-                    'color': event['color'],
-                    'from_date': event['from_date'].strftime('%d/%m/%Y'),
-                    'to_date': event['to_date'].strftime('%d/%m/%Y'),
-                    'shared_staff': shared_staff
-                })
-        
-        # Evento anterior más cercano
-        previous_event = None
-        min_days_before = float('inf')
-        for event in cached_dashboard_data['events']:
-            if event['to_date'] < target_event['from_date']:
-                days_diff = (target_event['from_date'] - event['to_date']).days
-                if days_diff < min_days_before:
-                    min_days_before = days_diff
-                    previous_event = {
-                        'event_id': event['event_id'],
-                        'event_name': event['event_name'],
-                        'city': event['city'],
-                        'set_name': event['set_name'],
-                        'color': event['color'],
-                        'from_date': event['from_date'].strftime('%d/%m/%Y'),
-                        'to_date': event['to_date'].strftime('%d/%m/%Y'),
-                        'days_before': days_diff
-                    }
-        
-        # Evento siguiente más cercano
-        next_event = None
-        min_days_after = float('inf')
-        for event in cached_dashboard_data['events']:
-            if event['from_date'] > target_event['to_date']:
-                days_diff = (event['from_date'] - target_event['to_date']).days
-                if days_diff < min_days_after:
-                    min_days_after = days_diff
-                    next_event = {
-                        'event_id': event['event_id'],
-                        'event_name': event['event_name'],
-                        'city': event['city'],
-                        'set_name': event['set_name'],
-                        'color': event['color'],
-                        'from_date': event['from_date'].strftime('%d/%m/%Y'),
-                        'to_date': event['to_date'].strftime('%d/%m/%Y'),
-                        'days_after': days_diff
-                    }
-        
-        travel_analysis = {
-            'has_previous': previous_event is not None,
-            'has_next': next_event is not None,
-            'days_from_previous': min_days_before if previous_event else None,
-            'days_to_next': min_days_after if next_event else None
-        }
-        
-        return jsonify({
-            'success': True,
-            'event': event_info,
-            'staff': staff,
-            'simultaneous_events': simultaneous_events,
-            'previous_event': previous_event,
-            'next_event': next_event,
-            'travel_analysis': travel_analysis
-        })
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo detalles de evento: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == "__main__":
-    logger.info("🏁 Events Calendar AKS - Al Kamel Management")
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+                            'conflicting_city': other_
